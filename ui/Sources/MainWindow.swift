@@ -22,7 +22,16 @@ final class MainWindowController {
             w.center()
             w.contentView = NSHostingView(rootView: MainWindowView())
             window = w
+            // Menu-bar app normally has no Dock presence (LSUIElement); while
+            // the main window is open, behave like a regular app — Dock icon,
+            // ⌘Tab — and go back to accessory when it closes.
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.willCloseNotification, object: w, queue: .main
+            ) { _ in
+                Task { @MainActor in NSApp.setActivationPolicy(.accessory) }
+            }
         }
+        NSApp.setActivationPolicy(.regular)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

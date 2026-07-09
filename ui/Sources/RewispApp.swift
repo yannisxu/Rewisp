@@ -25,14 +25,24 @@ struct MenuBarIcon: View {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Single instance: login item + manual relaunch can race and leave two
-        // menu bar icons. If another copy is already running, this one bows out.
+        // Single instance: Spotlight may launch a second copy (e.g. the build in
+        // the repo) while one is already running. Don't just die silently — tell
+        // the running instance to show the main window, then bow out. This makes
+        // "open Rewisp from Spotlight" always visibly do something.
         let others = NSRunningApplication.runningApplications(
             withBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.yashmit.rewisp")
             .filter { $0 != NSRunningApplication.current }
         if !others.isEmpty {
+            DistributedNotificationCenter.default().postNotificationName(
+                Notification.Name("com.rewisp.open.main"), object: nil,
+                userInfo: nil, deliverImmediately: true)
             NSApp.terminate(nil)
             return
+        }
+        DistributedNotificationCenter.default().addObserver(
+            forName: Notification.Name("com.rewisp.open.main"), object: nil, queue: .main
+        ) { _ in
+            Task { @MainActor in MainWindowController.shared.show() }
         }
 
         GlobalHotkey.register {
