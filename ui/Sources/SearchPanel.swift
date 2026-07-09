@@ -168,6 +168,7 @@ struct SearchPanelView: View {
     // Form detector: the panel is non-activating, so the app behind keeps
     // focus — if a text field is focused there, offer to look it up.
     @State private var fieldLabel: String?
+    @AppStorage("rewisp.formassist") private var formAssist = true
     @FocusState private var focused: Bool
 
     private let spring = Animation.spring(response: 0.35, dampingFraction: 0.8)
@@ -243,10 +244,12 @@ struct SearchPanelView: View {
         .onReceive(NotificationCenter.default.publisher(for: .rewispPanelShown)) { _ in
             reset()
             DispatchQueue.main.async { focused = true }
-            Task { @MainActor in
-                let ctx = try? await RewispAPI.get("form-context", as: RewispAPI.FormContext.self)
-                if let label = ctx?.field?.label, !label.isEmpty, label.count < 40 {
-                    withAnimation(spring) { fieldLabel = label }
+            if formAssist {
+                Task { @MainActor in
+                    let ctx = try? await RewispAPI.get("form-context", as: RewispAPI.FormContext.self)
+                    if let label = ctx?.field?.label, !label.isEmpty, label.count < 40 {
+                        withAnimation(spring) { fieldLabel = label }
+                    }
                 }
             }
         }

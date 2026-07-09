@@ -15,8 +15,15 @@ enum AskEngine {
         return false
     }
 
+    // Settings: "Apple on-device first" (default — free, saves subscription
+    // usage) vs "always use my chosen engine" for people who want Claude/GPT
+    // quality on every question.
+    static var preferOnDevice: Bool {
+        UserDefaults.standard.object(forKey: "rewisp.ondevice") as? Bool ?? true
+    }
+
     static func ask(_ question: String) async throws -> RewispAPI.AskResult {
-        if onDeviceAvailable, #available(macOS 26.0, *) {
+        if preferOnDevice, onDeviceAvailable, #available(macOS 26.0, *) {
             do {
                 let ctx = try await RewispAPI.context(question)
                 // Personal fact found deterministically in the Vault — exact

@@ -704,6 +704,8 @@ struct SettingsTab: View {
     @State private var digestRunning = false
     @State private var digestError: String?
     @AppStorage("rewisp.notify") private var notifyMode = "silent"
+    @AppStorage("rewisp.ondevice") private var onDeviceFirst = true
+    @AppStorage("rewisp.formassist") private var formAssist = true
     @ObservedObject var status = StatusModel.shared
 
     var body: some View {
@@ -713,9 +715,17 @@ struct SettingsTab: View {
 
                 Card {
                     CardHeader(title: "AI engine", symbol: "cpu.fill")
-                    row("Quick answers", AskEngine.onDeviceAvailable
-                        ? "Apple on-device model, engine below as fallback"
-                        : "Engine below (on-device model unavailable)")
+                    if AskEngine.onDeviceAvailable {
+                        Picker("", selection: $onDeviceFirst) {
+                            Text("Apple on-device first — free, private, saves your subscription usage").tag(true)
+                            Text("Always use the engine below — best quality on every question").tag(false)
+                        }
+                        .pickerStyle(.radioGroup)
+                        .labelsHidden()
+                    } else {
+                        row("Quick answers", "Engine below (on-device model unavailable)")
+                    }
+                    Divider().opacity(0.35)
                     Picker("", selection: $engine) {
                         Text("Auto — best available (recommended)").tag("auto")
                         Text("Claude Pro" + availTag(settings?.available?.claude)).tag("claude")
@@ -787,6 +797,33 @@ struct SettingsTab: View {
                     }
                     .pickerStyle(.radioGroup)
                     .labelsHidden()
+                }
+
+                Card {
+                    CardHeader(title: "Search panel", symbol: "sparkles.rectangle.stack.fill")
+                    Toggle(isOn: $formAssist) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Form field detection").font(.callout)
+                            Text("When you summon ⌘⇧Space while in a text field, offer to look that field up in your Vault.")
+                                .font(.caption).foregroundStyle(.tertiary)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                }
+
+                Card {
+                    CardHeader(title: "Help & feedback", symbol: "ladybug.fill")
+                    HStack(spacing: 10) {
+                        Button("Report a bug") { reportBug() }
+                        Button("Open the manual") {
+                            NSWorkspace.shared.open(URL(string:
+                                "https://github.com/yashmitb/Rewisp/blob/main/docs/MANUAL.md")!)
+                        }
+                        Spacer()
+                    }
+                    Text("Bug reports open a prefilled GitHub issue — your screen history never leaves this Mac; only what you type in the issue is shared.")
+                        .font(.caption).foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Card {
@@ -948,6 +985,25 @@ struct SettingsTab: View {
         Task { @MainActor in
             _ = try? await RewispAPI.post("settings", body: updates)
         }
+    }
+
+    private func reportBug() {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let os = ProcessInfo.processInfo.operatingSystemVersionString
+        let body = """
+        **What happened**
+
+
+        **What I expected**
+
+
+        ---
+        Rewisp \(version) · macOS \(os) · engine: \(engine) · on-device: \(AskEngine.onDeviceAvailable ? "available" : "unavailable")
+        """
+        var comps = URLComponents(string: "https://github.com/yashmitb/Rewisp/issues/new")!
+        comps.queryItems = [.init(name: "title", value: "[bug] "),
+                            .init(name: "body", value: body)]
+        if let url = comps.url { NSWorkspace.shared.open(url) }
     }
 
     private func runDigestNow() {

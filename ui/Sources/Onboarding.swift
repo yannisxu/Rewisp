@@ -36,9 +36,16 @@ final class OnboardingController {
 struct OnboardingView: View {
     let finish: () -> Void
     @State private var page = 0
+    @State private var consented: Set<String> = []
+    @AppStorage("rewisp.browser") private var preferredBrowser = ""
     @ObservedObject var status = StatusModel.shared
 
-    private let pages = 4
+    private let pages = 5
+    private let browsers: [(name: String, note: String?)] = [
+        ("Safari", nil), ("Google Chrome", nil), ("Arc", nil), ("Dia", nil),
+        ("Microsoft Edge", nil), ("Brave Browser", nil),
+        ("Firefox", "titles only — Firefox exposes no page URL"),
+    ]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,7 +53,8 @@ struct OnboardingView: View {
                 switch page {
                 case 0: welcome
                 case 1: privacy
-                case 2: permissions
+                case 2: browserPage
+                case 3: permissions
                 default: tutorial
                 }
             }
@@ -116,6 +124,59 @@ struct OnboardingView: View {
         }
     }
 
+    private var browserPage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Which browser do you live in?")
+                .font(.title.weight(.semibold))
+            Text("Rewisp reads the active tab's address to know *where* you saw things — and to fully pause capture on banking sites and private windows. Pick yours and macOS will ask for one-time permission now instead of surprising you later.")
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
+                ForEach(browsers, id: \.name) { b in
+                    Button {
+                        preferredBrowser = b.name
+                        Task { @MainActor in
+                            _ = try? await RewispAPI.post("browser-consent", body: ["app": b.name])
+                            consented.insert(b.name)
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: consented.contains(b.name)
+                                  ? "checkmark.circle.fill" : "globe")
+                                .foregroundStyle(consented.contains(b.name) ? .green : .secondary)
+                            Text(shortName(b.name))
+                                .font(.callout.weight(preferredBrowser == b.name ? .semibold : .regular))
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 10)
+                        .background(preferredBrowser == b.name
+                                    ? AnyShapeStyle(Color.accentColor.opacity(0.15))
+                                    : AnyShapeStyle(.quaternary.opacity(0.35)),
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if preferredBrowser == "Firefox" {
+                Label("Firefox can't share page URLs — Rewisp still captures what you read, but the banking-site kill list can't see addresses there.",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange)
+            } else {
+                Text("Multiple browsers? All of them work — this just gets the permission prompt out of the way for your main one.")
+                    .font(.caption).foregroundStyle(.tertiary)
+            }
+            Spacer()
+        }
+    }
+
+    private func shortName(_ app: String) -> String {
+        app.replacingOccurrences(of: "Google ", with: "")
+           .replacingOccurrences(of: "Microsoft ", with: "")
+           .replacingOccurrences(of: " Browser", with: "")
+    }
+
     private var permissions: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Two permissions")
@@ -161,6 +222,8 @@ struct OnboardingView: View {
                    "Drop in your resume or addresses; Rewisp treats them as trusted truth. Credentials are refused.")
             bullet("moon.stars", "9 PM Digest",
                    "One nightly summary: what happened, what's unfinished, what Rewisp learned (you approve every fact).")
+            bullet("cpu", "Free by default",
+                   "Quick answers run on Apple's built-in model. Claude Pro / ChatGPT Plus / local Ollama handle the rest — pick in Settings, never an API key.")
             Spacer()
         }
     }

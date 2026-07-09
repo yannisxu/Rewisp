@@ -42,6 +42,14 @@ is set, so you can never be silently billed per-token.
 every 2–3 days / weekly). "Run digest now" re-digests today manually (not
 needed; it costs one AI call).
 
+**More Settings switches**: "Apple on-device first" (default — free/private)
+vs "always use my engine" for max quality on every question; form field
+detection on/off; digest notification; **Report a bug** opens a prefilled
+GitHub issue (nothing from your history is attached — only what you type).
+
+**Onboarding** (first launch) now asks for your main browser and triggers the
+one-time macOS automation consent for it right there.
+
 ### Pause capture
 - **Cmd+Option+P** — global pause/resume toggle (works anywhere)
 - Menu bar → **Pause** button (icon switches to the pause badge)

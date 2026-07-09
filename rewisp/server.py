@@ -301,6 +301,15 @@ class Handler(BaseHTTPRequestHandler):
                                                 f"{refused[path.name]} — Rewisp never "
                                                 f"stores credentials"}, 400)
                 self._json({"created": path.name})
+            elif self.path == "/browser-consent":
+                # Onboarding: fire one AppleScript query at the chosen browser so
+                # the macOS automation consent prompt happens now, not mid-use.
+                from . import browser
+                app = body.get("app", "")
+                if not browser.is_browser(app):
+                    return self._json({"error": "unknown browser"}, 400)
+                url, title, _ = browser.active_tab(app)
+                self._json({"ok": True, "responded": url is not None or title is not None})
             elif self.path == "/killlist":
                 apps = body.get("apps")
                 pats = body.get("url_patterns")
