@@ -9,6 +9,6 @@ __pycache__/
 # macOS
 .DS_Store
 
-# local scratch
+# local scratch (scratchpad test screenshots only — not site/ or docs/img/)
+/panel*.png
 *.log
-panel*.png
