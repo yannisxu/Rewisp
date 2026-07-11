@@ -10,35 +10,42 @@ struct AnimatedWisp: View {
     var progress: CGFloat          // stroke draw + dot
     var glow: CGFloat = 1          // glow intensity
     var body: some View {
-        ZStack {
-            // blooming glow
-            Circle()
-                .fill(Theme.wisp)
-                .blur(radius: 26)
-                .opacity(0.55 * glow)
-                .scaleEffect(0.7 + 0.5 * glow)
+        GeometryReader { geo in
+            let s = min(geo.size.width, geo.size.height)
+            let pad = s * 0.18
+            let inner = CGRect(x: pad, y: pad, width: geo.size.width - 2 * pad,
+                               height: geo.size.height - 2 * pad)
+            ZStack {
+                // blooming glow
+                Circle()
+                    .fill(Theme.wisp)
+                    .blur(radius: s * 0.32)
+                    .opacity(0.55 * glow)
+                    .scaleEffect(0.7 + 0.5 * glow)
 
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(LinearGradient(colors: [Color(red: 0.16, green: 0.18, blue: 0.25),
-                                              Color(red: 0.05, green: 0.06, blue: 0.11)],
-                                     startPoint: .top, endPoint: .bottom))
-                .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .strokeBorder(.white.opacity(0.08)))
+                RoundedRectangle(cornerRadius: s * 0.28, style: .continuous)
+                    .fill(LinearGradient(colors: [Color(red: 0.16, green: 0.18, blue: 0.25),
+                                                  Color(red: 0.05, green: 0.06, blue: 0.11)],
+                                         startPoint: .top, endPoint: .bottom))
+                    .overlay(RoundedRectangle(cornerRadius: s * 0.28, style: .continuous)
+                        .strokeBorder(.white.opacity(0.08)))
 
-            WispPath()
-                .trim(from: 0, to: progress)
-                .stroke(LinearGradient(colors: [.white, Color(red: 0.72, green: 0.78, blue: 1)],
-                                       startPoint: .leading, endPoint: .trailing),
-                        style: StrokeStyle(lineWidth: 3.4, lineCap: .round, lineJoin: .round))
-                .padding(14)
-                .shadow(color: Theme.accent.opacity(0.9), radius: 6 * progress)
+                WispPath()
+                    .trim(from: 0, to: progress)
+                    .stroke(LinearGradient(colors: [.white, Color(red: 0.72, green: 0.78, blue: 1)],
+                                           startPoint: .leading, endPoint: .trailing),
+                            style: StrokeStyle(lineWidth: s * 0.075, lineCap: .round, lineJoin: .round))
+                    .padding(pad)
+                    .shadow(color: Theme.accent.opacity(0.9), radius: 6 * progress)
 
-            Circle().fill(.white)
-                .frame(width: 7, height: 7)
-                .offset(x: 17, y: -6)
-                .scaleEffect(progress > 0.85 ? 1 : 0)
-                .opacity(progress > 0.85 ? 1 : 0)
+                Circle().fill(.white)
+                    .frame(width: s * 0.11, height: s * 0.11)
+                    .position(WispPath.point(1, in: inner))
+                    .scaleEffect(progress > 0.85 ? 1 : 0)
+                    .opacity(progress > 0.85 ? 1 : 0)
+            }
         }
+        .aspectRatio(1, contentMode: .fit)
     }
 }
 

@@ -41,6 +41,16 @@ final class MainWindowController {
         // view's own .task only fires the first time).
         NotificationCenter.default.post(name: .rewispMainShown, object: nil)
     }
+
+    // Bring the window back to the front. The Touch ID panel steals focus and
+    // drops our window behind other apps' windows when it dismisses; call this
+    // after authentication so the user isn't left hunting for Rewisp.
+    func refront() {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+        window?.orderFrontRegardless()
+    }
 }
 
 struct MainWindowView: View {
@@ -176,32 +186,53 @@ private struct SidebarItem: View {
 }
 
 // Tiny code-drawn wisp (matches the app icon).
+// The one true Rewisp mark. Everything (menu bar, main window, splash animation,
+// app icon, landing page) draws this same tapered wisp so the logo reads the same
+// everywhere. The graphite squircle + white wisp + memory dot at the tail.
 struct WispMark: View {
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(LinearGradient(colors: [Color(red: 0.16, green: 0.18, blue: 0.25),
-                                              Color(red: 0.05, green: 0.06, blue: 0.11)],
-                                     startPoint: .top, endPoint: .bottom))
-            WispPath()
-                .stroke(.white, style: StrokeStyle(lineWidth: 1.8, lineCap: .round))
-                .padding(5)
-            Circle().fill(.white).frame(width: 3, height: 3).offset(x: 7, y: -2.5)
+        GeometryReader { geo in
+            let s = min(geo.size.width, geo.size.height)
+            let pad = s * 0.18
+            let inner = CGRect(x: pad, y: pad, width: geo.size.width - 2 * pad,
+                               height: geo.size.height - 2 * pad)
+            ZStack {
+                RoundedRectangle(cornerRadius: s * 0.28, style: .continuous)
+                    .fill(LinearGradient(colors: [Color(red: 0.16, green: 0.18, blue: 0.25),
+                                                  Color(red: 0.05, green: 0.06, blue: 0.11)],
+                                         startPoint: .top, endPoint: .bottom))
+                WispPath()
+                    .stroke(.white, style: StrokeStyle(lineWidth: max(s * 0.075, 1.4),
+                                                       lineCap: .round, lineJoin: .round))
+                    .padding(pad)
+                Circle().fill(.white)
+                    .frame(width: s * 0.11, height: s * 0.11)
+                    .position(WispPath.point(1, in: inner))
+            }
         }
+        .aspectRatio(1, contentMode: .fit)
     }
 }
 
 struct WispPath: Shape {
+    // Canonical wisp centerline — the same tapered sine curve the app icon draws
+    // (rewisp/ui/icon/make_icon.py). Sampled as a smooth polyline.
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        p.move(to: CGPoint(x: rect.minX, y: rect.midY + 2))
-        p.addCurve(to: CGPoint(x: rect.midX, y: rect.midY + 2),
-                   control1: CGPoint(x: rect.width * 0.25, y: rect.minY),
-                   control2: CGPoint(x: rect.width * 0.3, y: rect.maxY))
-        p.addCurve(to: CGPoint(x: rect.maxX - 2, y: rect.midY - 3),
-                   control1: CGPoint(x: rect.width * 0.7, y: rect.minY + 2),
-                   control2: CGPoint(x: rect.width * 0.8, y: rect.midY))
+        let steps = 72
+        for i in 0...steps {
+            let f = CGFloat(i) / CGFloat(steps)
+            let pt = WispPath.point(f, in: rect)
+            if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
+        }
         return p
+    }
+
+    // Point along the wisp for f in 0…1; f=1 is the tail where the memory dot sits.
+    static func point(_ f: CGFloat, in rect: CGRect) -> CGPoint {
+        let x = rect.minX + rect.width * (0.06 + f * 0.88)
+        let y = rect.midY + sin(f * .pi * 2.2 + 0.4) * rect.height * 0.30 * (1 - 0.40 * f)
+        return CGPoint(x: x, y: y)
     }
 }
 
@@ -251,12 +282,9 @@ struct TodayTab: View {
                         CardHeader(title: r.source == "digest" ? "Your day, digested" : "Today so far",
                                    symbol: r.source == "digest" ? "moon.stars.fill" : "clock")
                         if r.source == "digest", let text = r.recap {
-                            // stored digest uses "### Subtext" headers; Text()
-                            // only renders inline markdown, so downgrade to bold
-                            mdText(text.replacingOccurrences(of: "### Subtext", with: "**Subtext**"))
+                            RichText(text: text.replacingOccurrences(of: "### Subtext", with: "**Subtext**"))
                                 .font(.callout)
                                 .lineSpacing(3)
-                                .fixedSize(horizontal: false, vertical: true)
                         } else if let tr = r.time_report, !tr.isEmpty {
                             let top = tr.sorted { $0.value > $1.value }.prefix(5).filter { $0.value > 0 }
                             ForEach(Array(top), id: \.key) { app, m in
@@ -272,10 +300,9 @@ struct TodayTab: View {
                 if let t = threads, !t.threads.isEmpty, t.threads != "None." {
                     Card {
                         CardHeader(title: "Loose threads", symbol: "point.topleft.down.curvedto.point.bottomright.up")
-                        mdText(t.threads)
+                        RichText(text: t.threads)
                             .font(.callout)
                             .lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
                         if let d = t.date {
                             Text("from the \(d) digest")
                                 .font(.caption2).foregroundStyle(.tertiary)
@@ -520,7 +547,7 @@ struct ChatTab: View {
                                 in: RoundedRectangle(cornerRadius: 15, style: .continuous))
             } else {
                 WispMark().frame(width: 22, height: 22)
-                mdText(m.content)
+                RichText(text: m.content)
                     .font(.callout)
                     .lineSpacing(2)
                     .textSelection(.enabled)
@@ -630,6 +657,9 @@ struct VaultTab: View {
         } catch {
             authError = "Authentication failed. Try again."
         }
+        // The biometric panel drops our window behind other apps when it closes —
+        // pull it back to the front so the user lands right back in the Vault.
+        MainWindowController.shared.refront()
     }
 
     private var vaultBody: some View {
@@ -827,8 +857,14 @@ struct MemoryTab: View {
                 Card {
                     CardHeader(title: "Confirmed — used in every answer", symbol: "checkmark.seal.fill")
                     if let c = memory?.confirmed, !c.isEmpty {
-                        ForEach(c, id: \.self) { line in
-                            Text(line).font(.callout)
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(Array(c.enumerated()), id: \.offset) { i, line in
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    Text("•").foregroundStyle(Theme.wisp)
+                                    RichText(text: line).font(.callout)
+                                }
+                                if i < c.count - 1 { Divider().opacity(0.25) }
+                            }
                         }
                     } else {
                         Text("Nothing confirmed yet.").font(.callout).foregroundStyle(.secondary)
@@ -838,18 +874,21 @@ struct MemoryTab: View {
                 Card {
                     CardHeader(title: "Pending — from the nightly digest", symbol: "sparkle")
                     if let p = memory?.pending, !p.isEmpty {
-                        ForEach(p, id: \.self) { line in
-                            HStack(spacing: 10) {
-                                Text(line).font(.callout)
-                                Spacer()
-                                Button { act("memory/approve", line) } label: {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.title3).foregroundStyle(.green)
-                                }.buttonStyle(HoverButton())
-                                Button { act("memory/delete", line) } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.title3).foregroundStyle(.secondary)
-                                }.buttonStyle(HoverButton())
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(Array(p.enumerated()), id: \.offset) { i, line in
+                                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                    RichText(text: line).font(.callout)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Button { act("memory/approve", line) } label: {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.title3).foregroundStyle(.green)
+                                    }.buttonStyle(HoverButton())
+                                    Button { act("memory/delete", line) } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.title3).foregroundStyle(.secondary)
+                                    }.buttonStyle(HoverButton())
+                                }
+                                if i < p.count - 1 { Divider().opacity(0.25) }
                             }
                         }
                     } else {
@@ -1019,45 +1058,54 @@ struct SettingsTab: View {
     private var answersSection: some View {
         Card {
             CardHeader(title: "How Rewisp answers", symbol: "cpu.fill")
-            if AskEngine.onDeviceAvailable {
-                Picker("", selection: $onDeviceFirst) {
-                    Text("Apple on-device first — free, private, saves your subscription usage").tag(true)
-                    Text("Always use my chosen engine — best quality on every question").tag(false)
+
+            HStack {
+                Text("Engine").font(.callout)
+                Spacer()
+                Picker("", selection: $engine) {
+                    Text("Auto (recommended)").tag("auto")
+                    Text("Claude Pro" + availTag(settings?.available?.claude)).tag("claude")
+                    Text("ChatGPT Plus" + availTag(settings?.available?.codex)).tag("codex")
+                    Text("Local model" + availTag(settings?.available?.local)).tag("local")
+                    Text("Gemini (free)" + availTag(settings?.available?.gemini)).tag("gemini")
+                    Text("My API key" + availTag(settings?.available?.custom)).tag("custom")
+                    Text("Ollama" + availTag(settings?.available?.ollama)).tag("ollama")
                 }
-                .pickerStyle(.radioGroup)
+                .pickerStyle(.menu)
                 .labelsHidden()
-                Divider().opacity(0.35)
+                .frame(width: 220)
+                .onChange(of: engine) { saveSettings(["engine": engine]) }
             }
-            Text("Engine").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            Picker("", selection: $engine) {
-                Text("Auto — best available (recommended)").tag("auto")
-                Text("Claude Pro" + availTag(settings?.available?.claude)).tag("claude")
-                Text("ChatGPT Plus (Codex CLI)" + availTag(settings?.available?.codex)).tag("codex")
-                Text("Local model, offline" + availTag(settings?.available?.local)).tag("local")
-                Text("Gemini, free cloud" + availTag(settings?.available?.gemini)).tag("gemini")
-                Text("My own paid API key" + availTag(settings?.available?.custom)).tag("custom")
-                Text("Ollama, local" + availTag(settings?.available?.ollama)).tag("ollama")
-            }
-            .pickerStyle(.radioGroup)
-            .labelsHidden()
-            .onChange(of: engine) { saveSettings(["engine": engine]) }
             Text(engineNote)
                 .font(.caption)
-                .foregroundStyle(engine == "ollama" ? AnyShapeStyle(.orange) : AnyShapeStyle(.tertiary))
+                .foregroundStyle(engine == "ollama" ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
                 .fixedSize(horizontal: false, vertical: true)
 
-            if engine == "auto" {
+            if AskEngine.onDeviceAvailable {
                 Divider().opacity(0.35)
-                Text("Auto tries these in order — untick any to ignore it:")
-                    .font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                ForEach(autoChain, id: \.0) { id, label in
-                    Toggle(isOn: chainBinding(id)) { Text(label).font(.caption) }
-                        .toggleStyle(.checkbox)
+                Toggle(isOn: $onDeviceFirst) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Try Apple on-device first").font(.callout)
+                        Text("Free and private for quick questions; falls back to the engine above.")
+                            .font(.caption).foregroundStyle(.tertiary)
+                    }
                 }
+                .toggleStyle(.switch)
             }
-            Divider().opacity(0.35)
-            Text("Set up a local model in **Local model**, or add keys in **Cloud & keys** →")
-                .font(.caption).foregroundStyle(.tertiary)
+
+            if engine == "auto" {
+                DisclosureGroup("Advanced — engines Auto may use") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(autoChain, id: \.0) { id, label in
+                            Toggle(isOn: chainBinding(id)) { Text(label).font(.caption) }
+                                .toggleStyle(.checkbox)
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+                .font(.caption.weight(.medium))
+                .tint(.secondary)
+            }
         }
     }
 
@@ -1360,13 +1408,13 @@ struct SettingsTab: View {
 
     private var engineNote: String {
         switch engine {
-        case "claude": "Best quality. Uses your Claude Pro subscription ($0 extra, never an API key)."
-        case "codex": "Good quality. Uses your ChatGPT Plus subscription via the Codex CLI ($0 extra, never an API key)."
-        case "gemini": "Strong answers, fully free — no paid API, no local install. Uses your free Google key. Sends your memory text to Google to answer."
-        case "local": "Free, unlimited, offline, private — a real model running on your Mac. Much stronger than Apple on-device. Set it up in the Local AI card below."
-        case "custom": "Use any paid API you already have (OpenAI, DeepSeek, Groq, OpenRouter, Mistral). Configure it below. Your key stays on this Mac."
-        case "ollama": "⚠️ Noticeably weaker answers than Claude or ChatGPT — but fully free, unlimited, and never leaves this Mac. Install from ollama.com, then run: ollama pull llama3.1:8b"
-        default: "Tries Claude Pro, ChatGPT, your paid API, a local model, free Gemini, then Ollama — whichever you've set up. Untick any below to ignore it."
+        case "claude": "Best quality. Uses your Claude Pro subscription — $0 extra, never an API key."
+        case "codex": "Great quality. Uses your ChatGPT Plus subscription — $0 extra, never an API key."
+        case "gemini": "Strong and free. Uses your free Google key. Set it up in Cloud & keys."
+        case "local": "Free, offline, private — runs on your Mac. Set it up in Local model."
+        case "custom": "Any paid API you already have. Set it up in Cloud & keys."
+        case "ollama": "⚠️ Weaker than Claude or ChatGPT, but free and offline. Needs Ollama installed."
+        default: "Uses the best engine you've set up and falls back automatically."
         }
     }
 

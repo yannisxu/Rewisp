@@ -112,16 +112,14 @@ struct DashboardView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else if let r = result {
-                mdText(r.answer ?? "")
+                RichText(text: r.answer ?? "")
                     .font(.callout.weight(.medium))
                     .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
                 if let d = r.detail, !d.isEmpty {
-                    mdText(d)
+                    RichText(text: d)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 HStack(spacing: 8) {
                     if let s = r.source, !s.isEmpty {
@@ -162,8 +160,7 @@ struct DashboardView: View {
             sectionHeader("Today so far", symbol: "clock")
             if let r = recap {
                 if r.source == "digest", let text = r.recap {
-                    mdText(text).font(.callout).foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    RichText(text: text).font(.callout).foregroundStyle(.primary)
                 } else {
                     if let report = r.time_report, !report.isEmpty {
                         timeBars(report)
@@ -215,10 +212,9 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 10) {
             sectionHeader("Loose threads", symbol: "point.topleft.down.curvedto.point.bottomright.up")
             if let t = threads, !t.threads.isEmpty, t.threads != "None." {
-                mdText(t.threads)
+                RichText(text: t.threads)
                     .font(.callout)
                     .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
                 if let d = t.date {
                     Text("from digest \(d)").font(.caption2).foregroundStyle(.tertiary)
                 }

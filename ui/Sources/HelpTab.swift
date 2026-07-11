@@ -96,6 +96,55 @@ func mdText(_ s: String) -> Text {
     return Text(s)
 }
 
+// Block-aware renderer for AI answers. mdText() only handles inline markdown, so
+// multi-line answers, bullet lists, and numbered lists rendered as one run-on blob.
+// This preserves line breaks and styles list markers while keeping inline bold/code.
+struct RichText: View {
+    let text: String
+    var body: some View {
+        let lines = text.replacingOccurrences(of: "\r", with: "")
+            .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, raw in
+                let line = raw.trimmingCharacters(in: .whitespaces)
+                if line.isEmpty {
+                    Color.clear.frame(height: 3)
+                } else if let heading = Self.heading(line) {
+                    mdText(heading).font(.headline).padding(.top, 2)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if let (marker, rest) = Self.listItem(line) {
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                        Text(marker).foregroundStyle(Theme.wisp).monospacedDigit()
+                        mdText(rest).fixedSize(horizontal: false, vertical: true)
+                    }
+                } else {
+                    mdText(line).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    // "# x" / "## x" / "### x" -> the heading text (markers stripped). nil otherwise.
+    static func heading(_ line: String) -> String? {
+        if let m = line.range(of: #"^#{1,3}\s"#, options: .regularExpression) {
+            return String(line[m.upperBound...])
+        }
+        return nil
+    }
+
+    // "- x" / "* x" / "• x" -> "•"; "1. x" / "2) x" -> the number. nil otherwise.
+    static func listItem(_ line: String) -> (String, String)?  {
+        for p in ["- ", "* ", "• "] where line.hasPrefix(p) {
+            return ("•", String(line.dropFirst(p.count)))
+        }
+        if let m = line.range(of: #"^\d{1,2}[.)]\s"#, options: .regularExpression) {
+            let num = line[line.startIndex..<line.index(before: m.upperBound)]
+            return (String(num), String(line[m.upperBound...]))
+        }
+        return nil
+    }
+}
+
 // One paragraph/list/table/header block of the manual, styled natively.
 // Deliberately simple — the manual is hand-written markdown, not arbitrary
 // input, so a few pattern rules cover it without pulling in a parser dep.

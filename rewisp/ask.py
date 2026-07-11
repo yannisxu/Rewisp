@@ -538,6 +538,9 @@ def call_llm(prompt: str) -> tuple[str, str]:
     if engine == "auto":
         disabled = set(s.get("disabled_engines") or [])
         order = [e for e in AUTO_ORDER if e not in disabled]
+        if not order:
+            raise RuntimeError("No engines enabled. Turn one back on in "
+                               "Settings → Answers → Advanced.")
     else:
         order = [engine]
     errors = []
