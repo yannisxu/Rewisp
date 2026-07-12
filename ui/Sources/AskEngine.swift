@@ -66,6 +66,11 @@ enum AskEngine {
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "?."))
         if !q.isEmpty && (a == q || a == q + "?" || a == q + ".") { return true }
+        // The small model sometimes echoes the prompt's format cue instead of an
+        // answer, e.g. "(full sentences answering the question…)". Treat as a whiff.
+        if a.hasPrefix("(") && (a.contains("full sentences") || a.contains("numbered list")
+            || a.contains("answering the question")) { return true }
+        if a.hasPrefix("<") && a.hasSuffix(">") { return true }
         let markers = ["not found", "no information", "no relevant", "cannot find",
                        "can't find", "couldn't find", "i don't have", "i do not have",
                        "unable to", "not in your memory", "no mention"]

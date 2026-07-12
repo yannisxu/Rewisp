@@ -82,6 +82,14 @@ class Daemon:
         if not app:
             return
 
+        # Never capture Rewisp's own UI. The search panel and chat would otherwise
+        # index the questions you type as if they were memories — a feedback loop
+        # that pollutes retrieval (you ask "what did I search?" and it finds your
+        # own past questions). The digest is already stored separately.
+        if app == "Rewisp":
+            STATE["capture"] = "idle"
+            return
+
         # Kill-list app frontmost: full pause, reset trigger state so nothing leaks.
         if self.kill.blocks_app(app):
             if not self.killlist_active:

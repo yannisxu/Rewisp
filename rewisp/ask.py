@@ -211,13 +211,37 @@ def _generic_vault_fact(rows, question: str) -> dict | None:
     return None
 
 
+def _dedupe_captures(rows: list, limit: int) -> list:
+    """Keep the first `limit` captures whose (app + snippet) are distinct — the
+    same page recurs across many captures and otherwise fills the window with
+    repeats. Preserves rank order (most relevant first)."""
+    out: list = []
+    seen: list = []
+    for r in rows:
+        app = r.get("app", "")
+        snip = re.sub(r"\s+", " ", (r.get("snippet") or "")).strip().lower()
+        head = snip[:45]
+        if any(a == app and (head and head == h or (snip and s and (snip in s or s in snip)))
+               for a, h, s in seen):
+            continue
+        seen.append((app, head, snip[:120]))
+        out.append(r)
+        if len(out) >= limit:
+            break
+    return out
+
+
 def build_context(conn, question: str, compact: bool = False) -> tuple[str, dict]:
     """compact=True shrinks everything to fit the on-device model's small
     context window (~4k tokens total including the answer)."""
     since, until, stripped_q = timeparse.parse(question)
     fts = _fts_query(stripped_q)
     n_match = 8 if compact else 12
-    rows = db.search_captures(conn, fts, limit=n_match, since=since, until=until)
+    # Over-fetch, then drop near-duplicate captures (the same page/session recurs
+    # many times). Distinct facts in the window matter far more than raw count —
+    # especially for the small on-device model, which drowns in repetition.
+    rows = db.search_captures(conn, fts, limit=n_match * 3, since=since, until=until)
+    rows = _dedupe_captures(rows, n_match)
     if not rows:
         # Keyword miss (e.g. "what was due?") — fall back to the most recent
         # captures in the asked time window so Claude still sees something real.
