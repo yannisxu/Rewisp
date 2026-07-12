@@ -372,14 +372,19 @@ struct SearchPanelView: View {
     private func answerView(_ r: RewispAPI.AskResult) -> some View {
         ScrollView {
             answerContent(r)
+                // Set immediately (no animation here) so the frame always matches the
+                // real content height — animating this was letting content outpace the
+                // frame and the ScrollView clipped it ("cut off").
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { h in
-                    withAnimation(spring) { answerHeight = h }
+                    answerHeight = h
                 }
         }
-        // Explicit height = content's natural size, capped at ~60% of the screen;
-        // beyond the cap it scrolls. Never rely on the window proposal here.
+        .scrollIndicators(.automatic)
+        // Height = content's natural size, capped at ~60% of the screen; beyond the
+        // cap it scrolls. Animate the frame itself for a smooth grow, without clipping.
         .frame(height: min(max(answerHeight, 1),
                            max((NSScreen.main?.frame.height ?? 900) * 0.6, 380)))
+        .animation(.spring(response: 0.32, dampingFraction: 0.85), value: answerHeight)
     }
 
     private func answerContent(_ r: RewispAPI.AskResult) -> some View {
@@ -387,6 +392,7 @@ struct SearchPanelView: View {
                 // Hierarchy: answer loudest, detail quieter, source small, time smallest.
                 RichText(text: r.answer ?? "")
                     .font(.title3.weight(.medium))
+                    .lineSpacing(3)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -394,7 +400,9 @@ struct SearchPanelView: View {
                     RichText(text: d)
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                        .lineSpacing(2)
                         .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 HStack(spacing: 8) {
