@@ -264,8 +264,7 @@ def build_context(conn, question: str, compact: bool = False) -> tuple[str, dict
         for v in vrows:
             parts.append(f"[vault:{v['path']}]\n{v['snippet']}")
     # Always lead with what's on screen right now — most questions are about it.
-    recent = db.recent_captures(conn, limit=2 if compact else 2,
-                                max_chars=800 if compact else 1100)
+    recent = db.recent_captures(conn, limit=2, max_chars=800 if compact else 1100)
     if recent:
         parts.append("## Current / most recent screen (full text)")
         for r in recent:
