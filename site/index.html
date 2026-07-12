@@ -4,178 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rewisp — an ambient memory for your Mac</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23181c2c'/%3E%3Cpath d='M 1.44 14.80 L 1.97 15.86 L 2.50 16.79 L 3.02 17.55 L 3.55 18.13 L 4.08 18.52 L 4.61 18.71 L 5.14 18.69 L 5.66 18.48 L 6.19 18.07 L 6.72 17.50 L 7.25 16.78 L 7.78 15.93 L 8.30 14.98 L 8.83 13.96 L 9.36 12.91 L 9.89 11.86 L 10.42 10.84 L 10.94 9.87 L 11.47 8.99 L 12.00 8.23 L 12.53 7.59 L 13.06 7.10 L 13.58 6.77 L 14.11 6.60 L 14.64 6.60 L 15.17 6.76 L 15.70 7.07 L 16.22 7.52 L 16.75 8.09 L 17.28 8.75 L 17.81 9.50 L 18.34 10.30 L 18.86 11.13 L 19.39 11.96 L 19.92 12.77 L 20.45 13.52 L 20.98 14.21 L 21.50 14.82 L 22.03 15.32 L 22.56 15.70' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='22.56' cy='15.70' r='1.0' fill='%23fff'/%3E%3C/svg%3E">
 <meta name="description" content="Rewisp remembers the text of everything you see on your Mac, so you can ask about it later. Private by construction — screenshots never touch disk.">
-<style>
-  :root {
-    --bg: #0b0d16;
-    --bg-2: #11141f;
-    --card: #161a28;
-    --line: rgba(255,255,255,.07);
-    --text: #eef0f6;
-    --muted: #9aa1b5;
-    --dim: #6b7288;
-    --accent: #8ea2ff;
-    --radius: 18px;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", sans-serif;
-    -webkit-font-smoothing: antialiased;
-    line-height: 1.55;
-    overflow-x: hidden;
-  }
-  a { color: inherit; text-decoration: none; }
-  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
-
-  /* nav */
-  nav {
-    position: sticky; top: 0; z-index: 50;
-    backdrop-filter: blur(18px);
-    background: rgba(11,13,22,.7);
-    border-bottom: 1px solid var(--line);
-  }
-  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: .01em; }
-  .brand svg { display: block; }
-  .nav-links { display: flex; gap: 28px; font-size: 14px; color: var(--muted); }
-  .nav-links a:hover { color: var(--text); }
-
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: var(--text); color: #0b0d16;
-    font-weight: 600; font-size: 15px;
-    padding: 12px 22px; border-radius: 999px;
-    transition: transform .15s ease, box-shadow .15s ease;
-  }
-  .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(142,162,255,.25); }
-  .btn.small { padding: 8px 16px; font-size: 13px; }
-  .btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
-  .btn.ghost:hover { color: var(--text); box-shadow: none; }
-
-  /* hero */
-  header { position: relative; padding: 110px 0 70px; text-align: center; }
-  .glow {
-    position: absolute; inset: -200px 0 auto 0; height: 600px; pointer-events: none;
-    background: radial-gradient(600px 300px at 50% 10%, rgba(142,162,255,.16), transparent 70%);
-  }
-  .pill {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-size: 13px; color: var(--muted);
-    border: 1px solid var(--line); border-radius: 999px;
-    padding: 6px 14px; margin-bottom: 28px;
-    background: rgba(255,255,255,.02);
-  }
-  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #7dd87d; }
-  h1 {
-    font-size: clamp(42px, 7vw, 76px);
-    line-height: 1.05; font-weight: 700; letter-spacing: -.03em;
-  }
-  h1 .soft { color: var(--dim); }
-  .sub {
-    margin: 24px auto 0; max-width: 560px;
-    font-size: 19px; color: var(--muted);
-  }
-  .cta-row { margin-top: 38px; display: flex; gap: 14px; justify-content: center; align-items: center; }
-  .hint { margin-top: 14px; font-size: 13px; color: var(--dim); }
-  .hint code { font-family: ui-monospace, "SF Mono", monospace; background: var(--card); padding: 2px 7px; border-radius: 6px; border: 1px solid var(--line); }
-
-  /* demo bar */
-  .demo {
-    margin: 70px auto 0; max-width: 640px; text-align: left;
-    background: linear-gradient(180deg, #1a1e2e, #141827);
-    border: 1px solid var(--line); border-radius: var(--radius);
-    box-shadow: 0 40px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.03) inset;
-    overflow: hidden;
-  }
-  .demo .bar { display: flex; align-items: center; gap: 12px; padding: 18px 20px; font-size: 17px; }
-  .demo .bar .spark { color: var(--accent); }
-  .demo .q { border-right: 2px solid var(--accent); padding-right: 2px; white-space: nowrap; overflow: hidden; }
-  .demo .answer { border-top: 1px solid var(--line); padding: 18px 20px 16px; display: none; }
-  .demo .answer.show { display: block; animation: rise .35s ease; }
-  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
-  .demo .a-main { font-size: 16px; font-weight: 600; }
-  .demo .a-detail { margin-top: 6px; font-size: 14px; color: var(--muted); }
-  .demo .a-meta { margin-top: 12px; display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--dim); }
-  .demo .badge { border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; background: rgba(255,255,255,.03); }
-
-  /* sections */
-  section { padding: 90px 0; }
-  .kicker { font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
-  h2 { font-size: clamp(28px, 4vw, 42px); font-weight: 700; letter-spacing: -.02em; margin-top: 10px; }
-  .lead { margin-top: 14px; color: var(--muted); max-width: 620px; font-size: 17px; }
-
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 44px; }
-  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
-  .card {
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: var(--radius); padding: 26px;
-    transition: border-color .2s ease, transform .2s ease;
-  }
-  .card:hover { border-color: rgba(142,162,255,.3); transform: translateY(-2px); }
-  .card .ic {
-    width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
-    border-radius: 10px; background: rgba(142,162,255,.09);
-    border: 1px solid rgba(142,162,255,.18);
-  }
-  .card .ic svg { width: 19px; height: 19px; stroke: var(--accent); fill: none;
-    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  .card h3 { margin-top: 14px; font-size: 17px; font-weight: 600; }
-  .card p { margin-top: 8px; font-size: 14.5px; color: var(--muted); }
-
-  /* product shots — each screenshot centered on its own glow */
-  .shots { margin-top: 56px; display: flex; flex-direction: column; gap: 72px; }
-  .shot { position: relative; text-align: center; }
-  .shot .frame {
-    position: relative; display: inline-block; max-width: 100%;
-    border-radius: 16px; overflow: hidden;
-    border: 1px solid rgba(255,255,255,.09);
-    box-shadow: 0 30px 70px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.05) inset;
-  }
-  .shot .frame::before {
-    content: ""; position: absolute; inset: -14% -6% auto -6%; height: 70%;
-    background: radial-gradient(60% 100% at 50% 0%, rgba(142,162,255,.22), transparent 70%);
-    filter: blur(30px); z-index: -1; pointer-events: none;
-  }
-  .shot img { display: block; width: 100%; height: auto; }
-  .shot.hero .frame { width: 720px; }
-  .shot.app .frame { width: 780px; }
-  .shot .cap { margin-top: 20px; font-size: 15px; color: var(--muted); }
-  .shot .cap b { color: var(--text); font-weight: 600; }
-  @media (max-width: 820px) { .shots { gap: 52px; } .shot .frame { width: 100% !important; } }
-
-  /* privacy strip */
-  .strip {
-    background: var(--bg-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
-  }
-  .checks { margin-top: 36px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 40px; max-width: 760px; }
-  @media (max-width: 700px) { .checks { grid-template-columns: 1fr; } }
-  .checks li { list-style: none; display: flex; gap: 12px; font-size: 15.5px; color: var(--muted); }
-  .checks li b { color: var(--text); font-weight: 600; }
-  .checks .tick { color: #7dd87d; flex-shrink: 0; }
-
-  /* how */
-  .steps { margin-top: 44px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: step; }
-  @media (max-width: 800px) { .steps { grid-template-columns: 1fr; } }
-  .step { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
-  .step::before {
-    counter-increment: step; content: "0" counter(step);
-    font-family: ui-monospace, "SF Mono", monospace; font-size: 13px; color: var(--dim);
-  }
-  .step h3 { margin-top: 10px; font-size: 17px; }
-  .step p { margin-top: 8px; font-size: 14.5px; color: var(--muted); }
-
-  /* footer cta */
-  .final { text-align: center; padding: 110px 0 90px; }
-  footer {
-    border-top: 1px solid var(--line); padding: 28px 0; font-size: 13px; color: var(--dim);
-  }
-  .foot-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-  footer a:hover { color: var(--text); }
-</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23181c2c'/%3E%3Cpath d='M 1.44 14.80 L 1.97 15.86 L 2.50 16.79 L 3.02 17.55 L 3.55 18.13 L 4.08 18.52 L 4.61 18.71 L 5.14 18.69 L 5.66 18.48 L 6.19 18.07 L 6.72 17.50 L 7.25 16.78 L 7.78 15.93 L 8.30 14.98 L 8.83 13.96 L 9.36 12.91 L 9.89 11.86 L 10.42 10.84 L 10.94 9.87 L 11.47 8.99 L 12.00 8.23 L 12.53 7.59 L 13.06 7.10 L 13.58 6.77 L 14.11 6.60 L 14.64 6.60 L 15.17 6.76 L 15.70 7.07 L 16.22 7.52 L 16.75 8.09 L 17.28 8.75 L 17.81 9.50 L 18.34 10.30 L 18.86 11.13 L 19.39 11.96 L 19.92 12.77 L 20.45 13.52 L 20.98 14.21 L 21.50 14.82 L 22.03 15.32 L 22.56 15.70' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='22.56' cy='15.70' r='1.0' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
@@ -190,6 +21,7 @@
       Rewisp
     </a>
     <div class="nav-links">
+      <a href="#see">See it</a>
       <a href="#privacy">Privacy</a>
       <a href="#how">How it works</a>
       <a href="https://github.com/yashmitb/Rewisp">GitHub</a>
@@ -217,7 +49,7 @@
         <div class="a-detail" id="a-detail"></div>
         <div class="a-meta">
           <span id="a-src"></span>
-          <span class="badge">Apple on-device</span>
+          <span class="badge accent" id="a-engine">Apple on-device</span>
           <span style="margin-left:auto">⌘C Copy</span>
         </div>
       </div>
@@ -225,88 +57,171 @@
   </div>
 </header>
 
+<!-- ── interactive demos ── -->
+<section id="see">
+  <div class="wrap">
+    <div class="kicker reveal">Watch it work</div>
+    <h2 class="reveal d1">Four things it does,<br>while you do nothing.</h2>
+    <p class="lead reveal d2">No screenshots below — these are live, running in your browser. The real app does the same on your Mac.</p>
+
+    <div class="demos">
+      <!-- form autofill -->
+      <div class="panel reveal" id="form-demo">
+        <div class="ph"><span class="tag">Autofill</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="form-demo">
+          <div class="field" data-val="Yashmit Bhaverisetti"><div class="lab">Full name</div><div class="val"></div><span class="src">Vault ✓</span></div>
+          <div class="field" data-val="ybhaverisetti@ucsd.edu"><div class="lab">Email</div><div class="val"></div><span class="src">Vault ✓</span></div>
+          <div class="field" data-val="9500 Gilman Dr, La Jolla, CA 92093"><div class="lab">Address</div><div class="val"></div><span class="src">Vault ✓</span></div>
+          <div class="field skip"><div class="lab">Password</div><div class="val">•••••••• — never filled</div><span class="src">skipped</span></div>
+        </div>
+        <h3>Fills any form from your Vault</h3>
+        <p class="cap">⌘⇧Space on a signup page. Reads every field, fills from your saved details. Never passwords or cards — and never submits.</p>
+      </div>
+
+      <!-- engine chain -->
+      <div class="panel reveal d1" id="chain-demo">
+        <div class="ph"><span class="tag">Smart routing</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="chain">
+          <div class="node" data-idle="tries first"><span class="ico">◍</span><span class="nm">Apple on-device</span><span class="st">tries first</span></div>
+          <div class="node" data-idle="free · fast"><span class="ico">✦</span><span class="nm">Gemini</span><span class="st">free · fast</span></div>
+          <div class="node" data-idle="deepest"><span class="ico">✳</span><span class="nm">Claude</span><span class="st">deepest</span></div>
+        </div>
+        <h3>Always the best answer available</h3>
+        <p class="cap">Free on-device model answers first. If it comes up thin, Rewisp quietly escalates to Gemini, then Claude — you just see the good answer.</p>
+      </div>
+
+      <!-- nightly digest -->
+      <div class="panel reveal" id="digest-demo">
+        <div class="ph"><span class="tag">9 PM digest</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="digest">
+          <div class="dline"><span class="dt">Summary</span><span class="dtxt">Shipped the <b>v0.7 panel animation</b>, tuned the on-device prompt, one Calc III quiz.</span></div>
+          <div class="dline"><span class="dt">Unfinished</span><span class="dtxt">Chapter 4 problem set — <b>opened, not submitted.</b></span></div>
+          <div class="dline"><span class="dt">Learned</span><span class="dtxt">You prefer <b>Gemini</b> for daily questions. <i>Approve?</i></span></div>
+        </div>
+        <h3>One quiet summary a day</h3>
+        <p class="cap">At 9 PM: what happened, what's still open, what it learned about you. Every fact waits for your approval before it's kept.</p>
+      </div>
+
+      <!-- time tracking -->
+      <div class="panel reveal d1" id="time-demo">
+        <div class="ph"><span class="tag">Where the day went</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="time-demo">
+          <div class="trow"><span class="tn">Xcode</span><span class="track"><span class="fill" data-w="82%"></span></span><span class="tm">3h 10m</span></div>
+          <div class="trow"><span class="tn">Chrome</span><span class="track"><span class="fill" data-w="54%"></span></span><span class="tm">2h 05m</span></div>
+          <div class="trow"><span class="tn">Canvas</span><span class="track"><span class="fill" data-w="30%"></span></span><span class="tm">1h 08m</span></div>
+          <div class="trow"><span class="tn">YouTube</span><span class="track"><span class="fill" data-w="18%"></span></span><span class="tm">41m</span></div>
+        </div>
+        <h3>Time, honestly</h3>
+        <p class="cap">Minutes per app, computed locally from what you actually looked at. No timers to start, nothing sent anywhere.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── real screenshots ── -->
 <section>
   <div class="wrap">
-    <div class="kicker">The real thing</div>
-    <h2>Not a mockup.</h2>
-    <p class="lead">Actual screenshots — the whole thing runs today.</p>
+    <div class="kicker reveal">The real thing</div>
+    <h2 class="reveal d1">Not a mockup.</h2>
+    <p class="lead reveal d2">Actual screenshots — the whole thing runs today.</p>
     <div class="shots">
-      <div class="shot hero">
+      <div class="shot hero reveal">
         <div class="frame">
           <img src="assets/panel.png" alt="Search panel answering a question from screen history, on-device" loading="lazy">
         </div>
         <p class="cap"><b>Hit ⌘⇧Space, ask anything.</b> Answered in seconds — with the source and the time you saw it.</p>
       </div>
-      <div class="shot app">
+      <div class="shot app reveal">
         <div class="frame">
           <img src="assets/settings.png" alt="Main window settings: engine chain, digest schedule" loading="lazy">
         </div>
-        <p class="cap"><b>A real app behind it.</b> Choose your engine — Claude Pro, ChatGPT Plus, or free local Ollama. Never an API key.</p>
+        <p class="cap"><b>A real app behind it.</b> Pick your engine chain, schedule the digest, manage the Vault. No API key, ever.</p>
       </div>
     </div>
   </div>
 </section>
 
+<!-- ── privacy ── -->
 <section id="privacy" class="strip">
   <div class="wrap">
-    <div class="kicker">Private by construction</div>
-    <h2>It remembers everything.<br>It shares nothing.</h2>
-    <p class="lead">Most "memory" apps record your screen to the cloud. Rewisp was built the opposite way — the pixels are gone before anything is saved.</p>
-    <ul class="checks">
+    <div class="kicker reveal">Private by construction</div>
+    <h2 class="reveal d1">It remembers everything.<br>It shares nothing.</h2>
+    <p class="lead reveal d2">Most "memory" apps record your screen to the cloud. Rewisp was built the opposite way — the pixels are gone before anything is saved.</p>
+    <ul class="checks reveal d2">
       <li><span class="tick">✓</span><span><b>Screenshots never touch disk.</b> Text is extracted in memory; the image is discarded instantly.</span></li>
       <li><span class="tick">✓</span><span><b>Everything stays local.</b> One SQLite file in your home folder, readable only by you.</span></li>
       <li><span class="tick">✓</span><span><b>Answers can stay on-device.</b> Run questions on Apple's built-in or a local model — nothing leaves the Mac. Prefer Claude or Gemini for sharper answers? Only the prompt is sent, only when you ask.</span></li>
+      <li><span class="tick">✓</span><span><b>Vault locked with Touch ID.</b> Your resume, addresses, and answers sit behind a fingerprint. Credentials are refused at the door.</span></li>
       <li><span class="tick">✓</span><span><b>Kill list is absolute.</b> Messages, password managers, banking, private windows: capture fully pauses.</span></li>
-      <li><span class="tick">✓</span><span><b>Credentials refused.</b> Anything that looks like a password or card number is rejected at the door.</span></li>
       <li><span class="tick">✓</span><span><b>Forget button.</b> Delete the last 10 minutes with one click. Everything expires after 6 months.</span></li>
     </ul>
   </div>
 </section>
 
+<!-- ── how it works + capture viz ── -->
 <section id="how">
   <div class="wrap">
-    <div class="kicker">How it works</div>
-    <h2>Three quiet steps.</h2>
+    <div class="kicker reveal">How it works</div>
+    <h2 class="reveal d1">Three quiet steps.</h2>
     <div class="steps">
-      <div class="step">
+      <div class="step reveal">
         <h3>It notices</h3>
         <p>Smart triggers — switching apps, opening a page, settling after a scroll — catch a <b>wisp</b> of the moment. No constant recording.</p>
       </div>
-      <div class="step">
+      <div class="step reveal d1">
         <h3>It reads</h3>
         <p>Apple's Vision framework turns each wisp into text on-device. The screenshot is never saved — only what it said.</p>
       </div>
-      <div class="step">
+      <div class="step reveal d2">
         <h3>It answers</h3>
-        <p>Hit ⌘⇧Space and ask in plain English. Full-text search finds the moment; an on-device model writes the answer with source and time.</p>
+        <p>Hit ⌘⇧Space and ask in plain English. Full-text search finds the moment; a model writes the answer with source and time.</p>
+      </div>
+    </div>
+
+    <div class="capture-viz reveal" id="capture-viz">
+      <div class="app-src">
+        <span class="aname">Chrome</span>
+        <span class="aname">Canvas</span>
+        <span class="aname">Xcode</span>
+        <span class="aname">YouTube</span>
+      </div>
+      <div class="wisp-dot" id="wisp-dot"></div>
+      <div class="store">
+        <div class="stack">≣</div>
+        <div class="cnt"><span id="wisp-count">1,240</span> wisps</div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- ── everything else ── -->
 <section>
   <div class="wrap">
-    <div class="kicker">Everything else</div>
-    <h2>Small app. Long memory.</h2>
+    <div class="kicker reveal">Everything else</div>
+    <h2 class="reveal d1">Small app. Long memory.</h2>
     <div class="grid">
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/><path d="M14.5 16.5l1.5 1.5 3-3.5"/></svg></div><h3>Fills forms for you</h3><p>Hit ⌘⇧Space on any signup or checkout page. Rewisp reads every field, pulls your details from the Vault, and fills them in — never passwords or cards, and never submits. You review and send.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg></div><h3>Nightly digest</h3><p>At 9 PM, one summary of your day: what happened, what's unfinished, what it learned about you — every fact needs your approval.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div><h3>The Vault</h3><p>Drop in your resume, addresses, standard answers. Rewisp treats them as trusted truth and can fill them back to you instantly.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></div><h3>Time, honestly</h3><p>See where the day actually went — time per app, computed locally from what you looked at.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 4a4 4 0 0 0-4 4 3.5 3.5 0 0 0-2 6.2A3.8 3.8 0 0 0 8.5 20a3.6 3.6 0 0 0 3.5-2.4A3.6 3.6 0 0 0 15.5 20a3.8 3.8 0 0 0 2.5-5.8A3.5 3.5 0 0 0 16 8a4 4 0 0 0-4-4z"/><path d="M12 4v13.6"/></svg></div><h3>Memory you control</h3><p>A plain markdown file of what it knows. Approve, edit, or delete any line. It never confirms anything on its own.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></div><h3>Native, everywhere</h3><p>SwiftUI menu bar app, global hotkeys, a Spotlight-style panel that grows with the answer. No Electron.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3"/><path d="M4 5v3h3M20 19v-3h-3"/></svg></div><h3>Stays fresh</h3><p>Updates arrive through GitHub Releases — the app checks daily and offers them with one click.</p></div>
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/><path d="M14.5 16.5l1.5 1.5 3-3.5"/></svg></div><h3>Fills forms for you</h3><p>Reads every field on a signup or checkout page, pulls your details from the Vault, fills them in. Never passwords or cards, and never submits — you review and send.</p></div>
+      <div class="card reveal d1"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3v3m0 12v3m9-9h-3M6 12H3m14.5-6.5-2 2m-7 7-2 2m11 0-2-2m-7-7-2-2"/><circle cx="12" cy="12" r="3.2"/></svg></div><h3>Six engines, one chain</h3><p>Apple on-device, a bundled local model, Gemini, Claude, or ChatGPT. Set an order — it falls through to the next whenever one comes up short.</p></div>
+      <div class="card reveal d2"><div class="ic"><svg viewBox="0 0 24 24"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg></div><h3>Nightly digest</h3><p>At 9 PM, one summary of your day: what happened, what's unfinished, what it learned about you — every fact needs your approval.</p></div>
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1.4"/></svg></div><h3>Touch ID Vault</h3><p>Drop in your resume, addresses, standard answers. Locked behind your fingerprint, treated as trusted truth, filled back to you instantly.</p></div>
+      <div class="card reveal d1"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8M12 18v3"/><path d="M7 13l2 2 3-4"/></svg></div><h3>Runs a local model</h3><p>On first launch it checks your Mac and offers a local model that fits — unlimited, offline, private. Or skip it and stay fully on-device.</p></div>
+      <div class="card reveal d2"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></div><h3>Time, honestly</h3><p>See where the day actually went — minutes per app, computed locally from what you looked at. No timers, no upload.</p></div>
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 4a4 4 0 0 0-4 4 3.5 3.5 0 0 0-2 6.2A3.8 3.8 0 0 0 8.5 20a3.6 3.6 0 0 0 3.5-2.4A3.6 3.6 0 0 0 15.5 20a3.8 3.8 0 0 0 2.5-5.8A3.5 3.5 0 0 0 16 8a4 4 0 0 0-4-4z"/><path d="M12 4v13.6"/></svg></div><h3>Memory you control</h3><p>A plain markdown file of what it knows. Approve, edit, or delete any line. It never confirms anything on its own.</p></div>
+      <div class="card reveal d1"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></div><h3>Native, everywhere</h3><p>SwiftUI menu bar app, global hotkeys, a Spotlight-style panel that fades in and grows with the answer. No Electron.</p></div>
+      <div class="card reveal d2"><div class="ic"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3"/><path d="M4 5v3h3M20 19v-3h-3"/></svg></div><h3>Stays fresh</h3><p>Updates arrive through GitHub Releases — the app checks daily and offers them with one click.</p></div>
     </div>
   </div>
 </section>
 
+<!-- ── final ── -->
 <section class="final">
   <div class="wrap">
-    <h2>Stop trying to remember.<br><span style="color:var(--dim)">Start asking.</span></h2>
-    <div class="cta-row">
+    <h2 class="reveal">Stop trying to remember.<br><span style="color:var(--dim)">Start asking.</span></h2>
+    <div class="cta-row reveal d1">
       <a class="btn" href="https://github.com/yashmitb/Rewisp/releases/latest/download/Rewisp.dmg">Download Rewisp</a>
+      <a class="btn ghost" href="https://github.com/yashmitb/Rewisp">View source</a>
     </div>
-    <p class="hint">Free and open source · MIT</p>
+    <p class="hint">Free and open source · MIT · <kbd>⌘⇧Space</kbd> to summon</p>
   </div>
 </section>
 
@@ -321,44 +236,6 @@
   </div>
 </footer>
 
-<script>
-  // Typed demo loop in the hero search bar.
-  const demos = [
-    { q: "what was due on july 12?",
-      a: "Quiz 3.2 — due July 12 at 11:59 PM",
-      d: "11-point homework quiz on Canvas, seen this afternoon.",
-      s: "Canvas · Today 4:31 PM" },
-    { q: "that video from last night?",
-      a: "3 Days Stove Hut Camping in Heavy Snowfall",
-      d: "Watched on YouTube around 1 AM.",
-      s: "YouTube · Yesterday 1:02 AM" },
-    { q: "what's my student ID?",
-      a: "A18…4291",
-      d: "From personal_info in your Vault.",
-      s: "Vault · trusted" },
-  ];
-  const qEl = document.getElementById("q"), ans = document.getElementById("answer");
-  let di = 0;
-  async function type(text) {
-    qEl.textContent = "";
-    for (const ch of text) { qEl.textContent += ch; await sleep(45 + Math.random()*40); }
-  }
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
-  async function loop() {
-    for (;;) {
-      const d = demos[di % demos.length]; di++;
-      ans.classList.remove("show");
-      await type(d.q);
-      await sleep(500);
-      document.getElementById("a-main").textContent = d.a;
-      document.getElementById("a-detail").textContent = d.d;
-      document.getElementById("a-src").textContent = d.s;
-      ans.classList.add("show");
-      await sleep(3800);
-      qEl.textContent = ""; await sleep(400);
-    }
-  }
-  loop();
-</script>
+<script src="js/demos.js"></script>
 </body>
 </html>
