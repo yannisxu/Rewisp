@@ -1,7 +1,11 @@
 # Rewisp — Build Progress
 
-**Current status:** Phases 0–4 built and verified. Phase X (Yashmit's batch) largely done: panel expand fixed + auto-verified, Esc everywhere, menu bar icon state, main window (Chat/Vault/Memory/Settings), Apple on-device model for quick answers with Claude fallback, retrieval overhaul (verified: "what do i have due on july 12th" → correct homework answer), API token auth, repo reorganized.
-**Next up:** first automatic Digest (tonight 9 PM), 5-question success test after 2 days of data, Phase 5 extras (export, weekly report, form detector).
+**Current status (v0.7.0, 2026-07-12):** Phases 0–5 shipped and in daily use (~113+ wisps/day). All the post-v0.1 work below has landed: engine fallback chain, form autofill (fills, never submits), Touch ID Vault, multi-browser capture, main-window + Settings redesign, animated onboarding, and a reworked landing page. 9 releases (v0.1.0 → v0.7.0).
+**Next up:** custom "Rewisp AI model" training (~week-long); MCP connector to expose Rewisp memory to external agents (both in `todo.md`, not started). Re-adding a bundled offline/unlimited local model is an open option.
+
+> The v1 build plan (Phases 0–5) is preserved below as the permanent timeline.
+> Everything shipped after v0.1.0 is logged in the "Post-v0.1 releases" section
+> at the bottom.
 
 ---
 
@@ -160,3 +164,27 @@ Dia (Chromium-based) fully supports Chrome-style AppleScript (`URL of active tab
 5. **Synthetic keystrokes (CGEventPostToPid) don't reach a nonactivating NSPanel** — UI tests drive a distributed-notification hook instead.
 6. **Apple on-device model rambles** past its first answer (invents follow-up Q&As) — parser stops at the first repeated field; temperature 0.1, 250-token cap.
 7. **launchd daemon permission identity** is "Python" (Python.app inside the framework), not Terminal/VS Code.
+8. **Accessibility calls segfault Chromium** even on the main thread — form detection must run in a crash-isolated `rewisp axhelper` subprocess; the daemon talks to it over stdin/stdout and never touches AX itself. Chromium only exposes its web-AX tree while the enabling client stays alive, so the long-lived daemon holds it open.
+9. **Non-activating panel + `NSApp.activate`** = the click-twice bug. Activating the app stole app-level focus, so dismissing the panel left Rewisp active and the next click just re-activated the app behind it. A `.nonactivatingPanel` takes key focus for typing without activating — don't call `NSApp.activate`.
+10. **GitHub Pages CDN caches assets ~10 min** — a browser cache-reset refetches from the edge, not origin, so a fixed CSS/JS still looked broken. Version the asset URLs (`styles.css?v=…`) to force a fresh fetch.
+
+---
+
+## Post-v0.1 releases (v0.2 → v0.7, 2026-07-09 → 07-12)
+
+Shipped after the v1 phase plan above. The phase checklist is frozen as history;
+this is the running release log.
+
+- **Engine fallback chain** — `Auto` = Apple on-device → Claude (Claude Code) → Codex (ChatGPT Plus) → Gemini (free key) → Ollama. Falls through when one whiffs; refuses paid API-key env vars; answers badge the engine.
+- **Apple on-device prompt overhaul** — removed the worked example that was being regurgitated as fake facts; parenthesized format cues; whiff-detection escalates empty/echoed/hedged answers. ~4 → ~11/15 strong answers vs a Claude gold set.
+- **Form autofill (M1 + M2)** — detect every field over AX (crash-isolated `axhelper`), gather from Vault, show per-field with copy, then write into the page. Never submits; never card/CVC/password. Address parsing; single-field "Find mine."
+- **Touch ID Vault** — Vault locked behind a fingerprint; ingest extended to .rtf.
+- **Multi-browser capture** — Chromium family (Chrome, Arc, Edge, Brave, Vivaldi, Opera, Dia) + Safari get URL trigger + URL kill list + incognito detection; Firefox title-only.
+- **Main window + Settings redesign** — Today dashboard, chat sessions, and a sectioned Settings sidebar (Answers / Local model / Cloud & keys / Digest / Notifications / Privacy / Your data / Help). Unified wisp logo across icon/animation/UI. Markdown rendering fixed app-wide (no literal `**bold**`).
+- **Onboarding** — welcome → privacy → permissions → Vault setup page → animated feature demos.
+- **In-app Manual + bug report** — no GitHub links; built into the app.
+- **Search panel polish** — SwiftUI scale+fade entrance, answer-cutoff fix, and the non-activating click-twice fix (gotcha #9).
+- **Local model support** — hardware auto-detect + best-fit model download (MLX), later removed; Ollama remains as the local engine. Offline/unlimited path still open.
+- **Benchmark harness** — LLM-as-judge, Apple vs Claude across 15+ questions, gold-answer caching.
+- **Landing page rework** — split into html/css/js, live in-browser feature demos (autofill, engine chain, digest, time), fresh screenshots, CDN cache-busting (gotcha #10).
+- **Self-capture exclusion** — daemon no longer indexes Rewisp's own UI (was polluting retrieval with your own questions).
