@@ -436,7 +436,13 @@ def write(conn, pid: int) -> dict:
         ok = False
         if value:
             try:
-                ok = AXUIElementSetAttributeValue(el, "AXValue", value) == 0
+                # Safari/WebKit silently ignores an AXValue write (still returns 0)
+                # unless the field is focused first; Chromium doesn't care. Focus,
+                # write, then read back to confirm it actually took — the return
+                # code lies on WebKit, so verification is the real success signal.
+                AXUIElementSetAttributeValue(el, "AXFocused", True)
+                AXUIElementSetAttributeValue(el, "AXValue", value)
+                ok = str(_attr(el, "AXValue") or "") == value
             except Exception:  # noqa: BLE001 — some fields refuse AXValue writes
                 ok = False
         if ok:
