@@ -62,7 +62,11 @@ _IMP_VERB = (r"email|send|call|text|message|reply|respond|finish|submit|review|"
              r"renew|complete|upload|fix|merge|approve|set up|reach out|get")
 _IMPERATIVE = re.compile(rf"^\s*(?:{_IMP_VERB})\b[^.?!\n,;\"“”|]{{3,55}}", re.I)
 
-_SENT_SPLIT = re.compile(r"[.?!\n]")
+# Split on sentence punctuation AND runs of 2+ spaces — OCR reading-order
+# reassembly separates distinct on-screen elements with multi-space gaps, so a
+# to-do ("call Dona today") often sits mid-line after unrelated UI text. Splitting
+# on the gap isolates it so an imperative can be caught at the start of its cell.
+_SENT_SPLIT = re.compile(r"[.?!\n]|\s{2,}|\s+[-–—•|›]\s+")
 
 
 def _extract_due(text: str) -> str | None:
@@ -86,7 +90,12 @@ def _extract_due(text: str) -> str | None:
 
 
 def _clean(s: str) -> str:
-    return re.sub(r"\s+", " ", s).strip()[:140]
+    s = re.sub(r"\s+", " ", s).strip()
+    # Cut trailing OCR junk: a separator + whatever follows, or a run of
+    # non-ASCII/symbol garble that OCR sometimes tacks on ("today ^88七 …").
+    s = re.split(r"\s+[-–—•|›»:]\s+", s)[0]
+    s = re.sub(r"\s+[^\x00-\x7F].*$", "", s)
+    return s.strip(" -–—•|:\"'")[:140]
 
 
 def _norm(s: str) -> str:
