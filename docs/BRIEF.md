@@ -4,7 +4,7 @@ An ambient memory for macOS. Rewisp quietly captures the **text** of what you se
 
 Owner: Yashmit. Single user, his Mac only. Nothing leaves the machine except the prompt of a question or the nightly digest, and only to the engine you choose.
 
-**Current version: v0.7.0** (9 releases across 2026-07-08 → 07-12). In daily use (~113+ wisps/day).
+**Current version: v0.8.0** (10 releases across 2026-07-08 → 07-14). In daily use (~180+ wisps/day, 3800+ wisps). v0.8 = the "intelligent memory" cycle: seven local reasoning features (semantic search, delta, promises, numbers, precognition, dream/reinforcement, proactive-recall nudges) + the first test suite.
 
 > This file describes what Rewisp *is today*. For the build timeline and per-task history, see `PROGRESS.md`. For the manual, `MANUAL.md`. For the threat model, `SECURITY.md`.
 
@@ -44,6 +44,16 @@ Capture (Python daemon) --> Store (SQLite FTS5) --> Digest (1 cloud call/night)
 - **Isolation** — Accessibility calls crash Chromium, so form detection runs in a crash-isolated `rewisp axhelper` subprocess; the daemon never touches AX directly.
 
 ## 4. Feature set
+
+### Thinking over memory (v0.8 — all local, all free)
+- **Semantic search** — meaning-based retrieval (model2vec embeddings + FTS fused via RRF); "burnout" finds "exhaustion".
+- **Delta** — every page version stored as text, so "what changed on this page?" diffs them (added/changed/removed, numeric moves).
+- **Promises** — commitments caught off-screen, held on Today until confirmed + done.
+- **Numbers over time** — recurring label+numbers become tracked sparklines; "how has my weight moved?".
+- **Precognition** — suggested questions guessed from the current screen + query history.
+- **Dream + reinforcement** — nightly consolidation into episodes; asked-about wisps strengthened and retention-exempt.
+- **Proactive recall** — a nudge pill surfaces a relevant past memory (off by default). Detection local; nudges never call the cloud.
+- Single cascade delete choke point so forget/kill/retention purge every derived table.
 
 ### Answering
 - **Engine chain with auto-fallback:** Apple on-device → Claude → Codex (ChatGPT Plus) → Gemini (free) → Ollama. Falls through when one comes up thin. `Auto` picks the best you've set up; answers badge which engine replied.

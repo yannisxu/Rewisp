@@ -86,6 +86,60 @@ anything on its own.
 
 ---
 
+## Thinking features (new in 0.8)
+
+Rewisp doesn't just store your screen — it reasons over it. These run locally
+and free.
+
+### Meaning-based search
+Search understands meaning, not just keywords. Ask *"that article about burnout"*
+and it finds the page that said **"exhaustion"** — no shared words needed. Every
+wisp gets a local semantic fingerprint (model2vec, ~0.1 ms, no cloud); answers
+fuse keyword + meaning ranking. If the embedder is offline it silently falls back
+to keyword search.
+
+### "What changed on this page?"
+Because Rewisp stores every version of a page as text, it can diff them. On any
+page you revisit, ⌘⇧Space → *"what changed on this page?"* or *"what's new here
+since Tuesday?"* → it shows what was **added / changed / removed** (a **Delta**
+badge marks these). Numbers that moved (a price, a grade) are called out.
+
+### Promises
+Rewisp catches commitments off your screen — *"I'll send mavi the doc"*, *"email
+manvi by end of today"*, *"call dona today"* — and pins them to **Today →
+Promises** as little slips: what **you owe** and what you're **waiting on**. You
+never type them. Tap ✓ to confirm, ✕ to dismiss; confirmed ones get a **Done**
+button that crumples the slip away. Overdue slips glow red. Nothing is stored
+until you confirm.
+
+### Numbers over time
+Any label+number Rewisp sees repeatedly — a weight, a grade, a price, tracked
+hours — becomes a **series** on **Today → Tracked** with a sparkline, once it's
+seen 3+ times with variance. Ask *"how has my weight moved?"* → current value,
+change, and recent points, charted from your own screen. No integrations.
+(Credential-shaped and menu-bar numbers are refused.)
+
+### Precognition (guessed questions)
+Summon ⌘⇧Space without typing and the suggestion chips are **guessed from what's
+on your screen + your history** — a page you've seen before offers *"What changed
+on this page?"*, a terminal error offers *"Have I seen this error before?"*.
+
+### Memory that consolidates + strengthens
+Each night Rewisp folds older wisps into **episodes** (short summaries of a
+session), so long-term recall stays fast — see the layers in **Settings → Your
+data → Memory layers** (raw wisps → episodes), with a **Consolidate now** button.
+Wisps you actually ask about get **reinforced** (they rank higher and survive
+longer). Fully local, no extra AI call.
+
+### Proactive recall (off by default)
+When the screen relates to something you saw before, Rewisp can slide a small
+**nudge pill** down from the menu bar — hover it to expand into the memory, 👍/👎
+to tune it. It's **off by default**; enable it in **Settings → Notifications →
+Proactive nudges**, and use **Send test nudge** there to see it. Detection is
+fully local; nudges never make a cloud call.
+
+---
+
 ## What happens automatically
 
 | When | What |
@@ -94,8 +148,10 @@ anything on its own.
 | Screen unchanged but you keep reading | Heartbeat capture every ~60s (dedupe drops identical screens) |
 | 5 min without input, screen locked | Capture stops |
 | Messages, WhatsApp, banking sites, password apps frontmost | Capture fully paused (kill list) |
+| Every capture | Commitments detected ("I'll send it Friday") → held as **Promises**; recurring label+numbers → **series**; a semantic fingerprint is stored for meaning-based search — all local |
 | 9:00 PM daily | **Digest** — the one automated Claude call: daily summary, loose threads, memory proposals. Mac asleep at 9? Runs on wake. |
-| Daily | Retention: captures + chats older than ~6 months deleted; summaries kept forever |
+| Nightly | **Consolidation** — older wisps folded into episodes; wisps you've asked about reinforced. Local, no AI call. |
+| Daily | Retention: captures + chats older than ~6 months deleted (reinforced wisps kept longer); summaries + episodes kept forever |
 | Login / reboot | Daemon + menu bar app start automatically |
 
 ### Kill list
@@ -129,6 +185,8 @@ rewisp pause | resume
 rewisp digest                 run tonight's digest early (once/day guard; --force to redo)
 rewisp memory                 show confirmed + pending memory
 rewisp vault | rewisp-vault   open vault folder + reindex
+rewisp embed-backfill         compute semantic fingerprints for old wisps
+rewisp dream                  consolidate aged wisps into episodes now
 ```
 
 ## Files & places

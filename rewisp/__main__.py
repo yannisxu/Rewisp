@@ -1,4 +1,4 @@
-"""CLI: python3 -m rewisp [daemon|once|pause|resume|status|search <q>|ask <q>|bench [q...]|digest [--force]|vault|memory|export|report|embed-backfill]"""
+"""CLI: python3 -m rewisp [daemon|once|pause|resume|status|search <q>|ask <q>|bench [q...]|digest [--force]|vault|memory|export|report|embed-backfill|dream]"""
 
 import sys
 

@@ -16,6 +16,16 @@ Answers come from Apple's on-device model in a few seconds — the badge shows w
   <img src="docs/img/settings.png" width="720" alt="Main window: engine chain, digest schedule, notifications">
 </p>
 
+## It thinks, not just stores (new in 0.8)
+
+- **Meaning-based search** — ask *"that article about burnout"*, find the page that said *"exhaustion"*. Local semantic fingerprints (model2vec) fused with keyword search.
+- **"What changed on this page?"** — Rewisp keeps every version of a page as text, so it can diff them and tell you what was added / changed / removed.
+- **Promises** — catches commitments off your screen (*"I'll send it Friday"*) and pins them to Today until you confirm and complete them. Never typed.
+- **Numbers over time** — any label+number you see repeatedly (weight, grade, price) becomes a tracked sparkline. *"How has my weight moved?"*
+- **Precognition** — summon the panel and the suggested questions are guessed from what's on screen + your history.
+- **Consolidation + reinforcement** — nightly, older wisps fold into episodes and the ones you ask about get strengthened. Fully local.
+- **Proactive recall** *(off by default)* — a nudge pill surfaces a past memory when it's relevant.
+
 ## How it works
 
 ```
@@ -49,7 +59,7 @@ Nightly Digest (9 PM) → one Claude call → recap · loose threads · memory
 Requires macOS 15+ (on-device answers need macOS 26), Python 3.13 with `pyobjc`, and [Claude Code](https://claude.com/claude-code) signed in for Digest/fallback answers.
 
 ```sh
-pip3 install pyobjc
+pip3 install pyobjc model2vec     # model2vec powers local semantic search (optional; falls back to keyword)
 python3 -m rewisp daemon          # grant Screen Recording when prompted
 cd ui && ./build.sh --install     # builds + installs /Applications/Rewisp.app
 ```

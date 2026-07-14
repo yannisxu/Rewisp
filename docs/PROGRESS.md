@@ -1,6 +1,6 @@
 # Rewisp — Build Progress
 
-**Current status (v0.7.0, 2026-07-12):** Phases 0–5 shipped and in daily use (~113+ wisps/day). All the post-v0.1 work below has landed: engine fallback chain, form autofill (fills, never submits), Touch ID Vault, multi-browser capture, main-window + Settings redesign, animated onboarding, and a reworked landing page. 9 releases (v0.1.0 → v0.7.0).
+**Current status (v0.8.0, 2026-07-14):** Phases 0–5 shipped + the "intelligent memory" cycle. In daily use (~180+ wisps/day, 3800+ wisps, ~500 episodes). v0.8 adds seven reasoning features (semantic search, delta, promises, numbers, precognition, dream/reinforcement, proactive-recall nudges) plus the first pytest suite (79 tests) and a Safari autofill fix. 10 releases (v0.1.0 → v0.8.0).
 **Next up:** custom "Rewisp AI model" training (~week-long); MCP connector to expose Rewisp memory to external agents (both in `todo.md`, not started). Re-adding a bundled offline/unlimited local model is an open option.
 
 > The v1 build plan (Phases 0–5) is preserved below as the permanent timeline.
@@ -167,6 +167,28 @@ Dia (Chromium-based) fully supports Chrome-style AppleScript (`URL of active tab
 8. **Accessibility calls segfault Chromium** even on the main thread — form detection must run in a crash-isolated `rewisp axhelper` subprocess; the daemon talks to it over stdin/stdout and never touches AX itself. Chromium only exposes its web-AX tree while the enabling client stays alive, so the long-lived daemon holds it open.
 9. **Non-activating panel + `NSApp.activate`** = the click-twice bug. Activating the app stole app-level focus, so dismissing the panel left Rewisp active and the next click just re-activated the app behind it. A `.nonactivatingPanel` takes key focus for typing without activating — don't call `NSApp.activate`.
 10. **GitHub Pages CDN caches assets ~10 min** — a browser cache-reset refetches from the edge, not origin, so a fixed CSS/JS still looked broken. Version the asset URLs (`styles.css?v=…`) to force a fresh fetch.
+
+---
+
+## v0.8 — intelligent memory (2026-07-14)
+
+The cycle that made Rewisp reason over its own memory, not just store it. All
+local, all free. First automated test suite landed here too (79 pytest).
+
+- **Semantic Memory (#0)** — local static embeddings (model2vec potion-retrieval-32M, 512-dim, pure numpy) on every wisp; retrieval fuses FTS + vector rank via RRF. Brute-force cosine (no vector-index extension at this scale). Fail-safe: offline → FTS only. `delete_captures` is the single cascade choke point for forget/kill/retention.
+- **Delta Memory (#1)** — `page_key` (normalized URL / app+title) identifies a page across time; fuzzy line-diff (with numeric-change detection) answers "what changed on this page?" deterministically. GET `/delta`.
+- **Déjà Vu (#2)** — proactive recall: reuse the capture's embedding, vector-search history, fire on strict gates (cosine, >24 h old, different context). Reusable nudge-pill UI (slide-in, hover-expand, connector line, 👍/👎). Off by default + "Send test nudge". Snippets strip OCR menu-bar chrome.
+- **Promises (#3)** — catch commitments off-screen (first-person + imperatives, with or without a deadline; boilerplate filtered), hold as Pending, surface on Today as paper slips (owe / waiting), confirm → done crumple, overdue red.
+- **Dream + Reinforcement (#4)** — nightly consolidation of aged wisps into `episodes` (session/page clustering, extractive summaries, embedded + FTS'd), mixed into answer context. Recall bumps `recall_count`; `w=recall_count·exp(-days/90)` is a 3rd RRF signal; reinforced wisps exempt from retention (2× cap). MemoryLayersCard sediment viz.
+- **Precognition (#5)** — guessed questions from the current screen + query history (template detectors + embedding-ranked history), shown as shimmer chips; taps tracked. Fuzzy de-dupe.
+- **Numbers Over Time (#6)** — recurring label+number → tracked series (≥3 distinct-ts readings, variance); rejects credentials, ids, years, menu-bar chrome; requires a unit or metric word. SeriesCard sparkline. Deterministic "how has X moved?"
+- **Safari autofill fix** — WebKit ignores AXValue writes unless the field is focused first; focus-then-write-then-verify. Chromium unaffected.
+- **Bug sweep** — promises/series cards never loaded (`.task` on a Group that resolved to EmptyView); precog duplicate chips; noise series from battery %.
+
+### Gotchas (v0.8)
+11. **`.task` never fires on a view that resolves to `EmptyView`** — gating a poll behind "no data → EmptyView" means it never fetches, so the card stays empty forever. Put `.task` on an always-present container (a `VStack` that conditionally shows a `Card` inside).
+12. **WebKit silently ignores AX `AXValue` writes** (returns success `0`, value unchanged) unless the element is focused first. Verify writes by reading the value back — the return code lies. Chromium accepts writes without focus.
+13. **OCR reads the menu bar first**, so raw snippets/series start with "App File Edit View … Help 43% Tue Jul 14" chrome — strip it before display, and reject it as a tracked number (battery % became a bogus series).
 
 ---
 
