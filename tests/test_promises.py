@@ -38,6 +38,17 @@ class TestStore:
         p = db.promises_by_status(conn, ("pending",))
         assert len(p) == 1 and p[0]["who"] == "me"
 
+    def test_stores_my_commitment_without_deadline(self, conn):
+        rid = db.insert_capture(conn, "Notes", None, None, "x")
+        n = promises.scan_and_store(conn, rid, "ok I will send mavi a doc pic")
+        assert n == 1                                  # first-person, no deadline, still kept
+        assert db.promises_by_status(conn, ("pending",))[0]["who"] == "me"
+
+    def test_drops_deadline_less_request(self, conn):
+        rid = db.insert_capture(conn, "Dia", None, None, "x")
+        n = promises.scan_and_store(conn, rid, "please email me at bob@example.com for details")
+        assert n == 0                                  # boilerplate 'please …' with no deadline
+
     def test_dedup_across_captures(self, conn):
         rid = db.insert_capture(conn, "Slack", None, None, "x")
         promises.scan_and_store(conn, rid, "I'll email the invoice by Friday")

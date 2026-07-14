@@ -83,22 +83,24 @@ def detect(text: str) -> list[dict]:
             seen.append(key)
             has_deadline = bool(_DEADLINE.search(sent))
             due = _extract_due(sent) if has_deadline else None
-            out.append({
-                "who": who,
-                "what": what,
-                "due": due,
-                "confidence": 0.85 if has_deadline else 0.6,
-            })
+            # First-person commitments ("I'll send…") are low-noise, so they count
+            # even without a deadline. Requests owed to you ("please email me at…")
+            # are boilerplate-prone, so those need a deadline to qualify.
+            if who == "me":
+                conf = 0.9 if has_deadline else 0.75
+            else:
+                conf = 0.85 if has_deadline else 0.5
+            out.append({"who": who, "what": what, "due": due, "confidence": conf})
             break  # one promise per sentence
     return out
 
 
-def scan_and_store(conn, wisp_id: int, text: str, min_conf: float = 0.85,
+def scan_and_store(conn, wisp_id: int, text: str, min_conf: float = 0.7,
                    max_per_capture: int = 3) -> int:
-    """Detect promises in a capture and store new ones as Pending. Only commitments
-    with a real deadline are auto-stored (min_conf 0.85) — deadline-less matches
-    and web boilerplate ('please email me at…') are too noisy on ambient screen
-    text. Dedups against recent promises. Returns how many were added."""
+    """Detect promises in a capture and store new ones as Pending. Stores your own
+    commitments even without a deadline ('I'll send mavi a doc pic'), but drops
+    deadline-less requests owed to you (boilerplate like 'please email me at…').
+    Dedups against recent promises. Returns how many were added."""
     found = [p for p in detect(text) if p["confidence"] >= min_conf][:max_per_capture]
     if not found:
         return 0
