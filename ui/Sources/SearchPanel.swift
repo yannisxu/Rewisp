@@ -622,24 +622,23 @@ struct SearchPanelView: View {
     // fresh install so the empty state never looks broken.
     private func loadSuggestions() {
         Task { @MainActor in
-            // Precognition first: questions guessed from the current screen + your
-            // history. Falls back to recent questions, then canned starters.
-            if let p = try? await RewispAPI.get("precog", as: RewispAPI.Precog.self),
-               p.suggestions.count >= 1 {
-                suggestions = Array(p.suggestions.prefix(3))
-                return
-            }
-            if let chats = try? await RewispAPI.get("chats", as: RewispAPI.Chats.self) {
-                let recent = chats.chats.filter { $0.role == "user" }
-                    .suffix(6).map(\.content).reversed()
-                var seen = Set<String>()
-                let unique = recent.filter { seen.insert($0.lowercased()).inserted }
-                if unique.count >= 2 {
-                    suggestions = Array(unique.prefix(3))
-                    return
+            // Precognition first (screen + history guesses), then top up to 3 with
+            // recent questions, then canned starters — so the panel always shows 3.
+            var picks: [String] = []
+            var seen = Set<String>()
+            func add(_ items: [String]) {
+                for s in items where seen.insert(s.lowercased()).inserted && picks.count < 3 {
+                    picks.append(s)
                 }
             }
-            suggestions = starters
+            if let p = try? await RewispAPI.get("precog", as: RewispAPI.Precog.self) {
+                add(p.suggestions)
+            }
+            if picks.count < 3, let chats = try? await RewispAPI.get("chats", as: RewispAPI.Chats.self) {
+                add(chats.chats.filter { $0.role == "user" }.suffix(6).map(\.content).reversed())
+            }
+            add(starters)
+            suggestions = picks
         }
     }
 
