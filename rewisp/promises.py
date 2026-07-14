@@ -19,10 +19,14 @@ _VERB = (r"(?:send|sends|sending|reply|replies|replying|respond|email|finish|"
          r"submit|review|call|share|deliver|sign|return|pay|get back|"
          r"follow up|circle back|send over|get you|send you)")
 
+# The tail after the verb captures the object ("the report to Dana"), but stops
+# at a quote, comma, or other clause break so it doesn't swallow the rest of a
+# run-on line (OCR rarely has sentence periods).
+_TAIL = r"[^.?!\n,;\"“”|]{0,45}"
 # You committing: "I'll send…", "I will review…", "let me get back to you".
-_ME = re.compile(rf"\b(?:i'?ll|i will|i can|i'?m going to|i plan to|let me|i'?ll go ahead and)\b[^.?!\n]*?\b{_VERB}\b[^.?!\n]{{0,60}}", re.I)
+_ME = re.compile(rf"\b(?:i'?ll|i will|i can|i'?m going to|i plan to|let me|i'?ll go ahead and)\b[^.?!\n,;]*?\b{_VERB}\b{_TAIL}", re.I)
 # Owed to you: "please reply by…", "can you send…", "get back to me by…".
-_THEM = re.compile(rf"\b(?:please|can you|could you|would you|will you|make sure to|don'?t forget to)\b[^.?!\n]*?\b{_VERB}\b[^.?!\n]{{0,60}}", re.I)
+_THEM = re.compile(rf"\b(?:please|can you|could you|would you|will you|make sure to|don'?t forget to)\b[^.?!\n,;]*?\b{_VERB}\b{_TAIL}", re.I)
 # A deadline anywhere in the clause strengthens confidence.
 _DEADLINE = re.compile(
     r"\b(?:by|before|due|no later than)\s+(?:eod|cob|end of day|today|tonight|tomorrow|"

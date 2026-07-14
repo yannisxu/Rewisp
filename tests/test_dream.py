@@ -5,11 +5,16 @@ import numpy as np
 from rewisp import db, dream, embed
 
 
+# Anchor to a fixed midday so relative offsets never straddle UTC midnight
+# (which would split a session across two dates and flake the clustering test).
+_ANCHOR = "2026-06-15 12:00:00"
+
+
 def _add_at(conn, ts_offset_min, app, key, text):
     cur = conn.execute(
         "INSERT INTO captures (ts, app, window_title, url, ocr_text, page_key) "
-        "VALUES (datetime('now', ?), ?, NULL, NULL, ?, ?)",
-        (f"{ts_offset_min} minutes", app, text, key))
+        "VALUES (datetime(?, ?), ?, NULL, NULL, ?, ?)",
+        (_ANCHOR, f"{ts_offset_min} minutes", app, text, key))
     conn.commit()
     return cur.lastrowid
 
