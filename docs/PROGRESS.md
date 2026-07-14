@@ -170,6 +170,16 @@ Dia (Chromium-based) fully supports Chrome-style AppleScript (`URL of active tab
 
 ---
 
+## v0.8.1 — polish (2026-07-14)
+
+Post-v0.8 polish from a full manual UI sweep. No new features; everything above
+still holds.
+- **Help center rebuilt** — was a plain rendered manual; now a looping animated search demo, a "Start here" quick-start row, an FAQ of expandable Q&As, a keyboard-shortcuts card, troubleshooting, and the full manual collapsed + searchable (search filters FAQ + manual together).
+- **Memory** — delete a Confirmed fact from the tab (hover → ✕), not just Pending; fuzzy de-dupe so the digest stops re-proposing reworded facts it already learned.
+- **Today** — clearer stat strip (live green/orange capture dot, "top app" label).
+- **Onboarding** teaches the v0.8 reasoning features.
+- **Chat** keeps the full Delta diff in history, not just the summary line.
+
 ## v0.8 — intelligent memory (2026-07-14)
 
 The cycle that made Rewisp reason over its own memory, not just store it. All
