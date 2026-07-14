@@ -87,9 +87,20 @@ def suggest(conn, limit: int = 3) -> list[str]:
                 break
             out.append(text)
 
-    # De-dupe, cap.
+    # Fuzzy de-dupe: 'what show was i watching just now?' and '…just now on
+    # netflix?' are the same suggestion. Drop a candidate that's a prefix of, or
+    # >0.8 similar to, one already kept.
+    from difflib import SequenceMatcher
     final: list[str] = []
     for q in out:
-        if q not in final:
+        qn = q.rstrip("?. ").lower()
+        dup = False
+        for k in final:
+            kn = k.rstrip("?. ").lower()
+            if qn == kn or qn.startswith(kn) or kn.startswith(qn) \
+               or SequenceMatcher(None, qn, kn).ratio() > 0.8:
+                dup = True
+                break
+        if not dup:
             final.append(q)
     return final[:limit]

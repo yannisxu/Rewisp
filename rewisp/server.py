@@ -376,12 +376,14 @@ class Handler(BaseHTTPRequestHandler):
                 # Enqueue a demo nudge so the pill UI can be seen while nudges are
                 # still disabled. Points at the most recent real wisp if there is one.
                 row = conn.execute(
-                    "SELECT id, app, substr(ocr_text,1,120) FROM captures ORDER BY id DESC LIMIT 1"
+                    "SELECT id, app, substr(ocr_text,1,300) FROM captures ORDER BY id DESC LIMIT 1"
                 ).fetchone()
+                from . import dejavu as _dj
                 src, appn, snip = (row if row else (None, "somewhere", "a page you visited"))
+                clean = _dj.clean_snippet(snip) or "a page you visited"
                 nid = db.enqueue_nudge(
                     conn, "dejavu", "You've seen something like this",
-                    f"Test nudge — you saw this in {appn}: “{' '.join((snip or '').split())[:90]}”",
+                    f"Test nudge — you saw this in {appn}: “{clean[:90]}”",
                     source_wisp_id=src, topic_key=f"test:{datetime.now().timestamp()}")
                 self._json({"ok": True, "id": nid})
             elif self.path == "/memory/approve":

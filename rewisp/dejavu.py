@@ -7,11 +7,33 @@ one-line body is templated (no model, no cloud call — nudges must be free).
 """
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 
 from . import config, db
 
 log = logging.getLogger("rewisp")
+
+# OCR reads the menu bar first, so raw snippets start with "App File Edit View …
+# Help 43% Tue Jul 14" chrome. Strip that leading junk so a recall/nudge shows
+# real page content.
+_MENUBAR = re.compile(r"^.{0,90}?\bHelp\b\s*", re.I)
+_JUNK_TOK = re.compile(
+    r"^(?:\d[\d,.:%]*|[•·|@&()\[\]<>/\\+*=~^_-]+|am|pm|"
+    r"mon|tue|wed|thu|fri|sat|sun|"
+    r"jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)$", re.I)
+
+
+def clean_snippet(text: str, n: int = 120) -> str:
+    """Drop the leading menu-bar + clock/battery/date chrome OCR captures first."""
+    t = " ".join((text or "").split())
+    m = _MENUBAR.match(t)
+    if m:
+        t = t[m.end():]
+    toks = t.split()
+    while toks and _JUNK_TOK.match(toks[0]):
+        toks.pop(0)
+    return " ".join(toks)[:n].strip()
 
 
 def _humanize(ts: str) -> str:
@@ -54,7 +76,9 @@ def find_recall(conn, wisp_id: int, qvec, app: str, page_key: str,
         m_app, m_key, m_ts, snippet = row
         if m_app == app and m_key == page_key:
             continue                             # same context, not a recall
-        snippet = " ".join((snippet or "").split())[:120]
+        snippet = clean_snippet(snippet)
+        if len(snippet) < 12:
+            continue                             # nothing meaningful after chrome strip
         try:
             db.bump_recall(conn, [hid])   # a surfaced memory counts as recalled
         except Exception:  # noqa: BLE001
