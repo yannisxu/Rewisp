@@ -24,6 +24,23 @@ class TestDetect:
     def test_ignores_non_commitment(self):
         assert promises.detect("The weather is nice and the sky is blue today.") == []
 
+    def test_imperative_todo_with_deadline(self):
+        # bare to-do imperatives (no "I will") with a time reference
+        for t in ["email manvi by the end of today", "Send John an invite by the end of the week",
+                  "call Dana tomorrow", "ping the team on Monday"]:
+            d = promises.detect(t)
+            assert d and d[0]["who"] == "me", t
+
+    def test_bare_imperative_without_time_ignored(self):
+        # a naked verb (UI button) with no time reference is not a promise
+        assert promises.detect("Send the file") == []
+        assert promises.detect("Reply All") == []
+
+    def test_broad_first_person_openers(self):
+        for t in ["I need to submit the form by Friday", "gotta pay rent today",
+                  "remember to book the flight this week", "I have to finish the deck tonight"]:
+            assert promises.detect(t), t
+
     def test_dedups_within_block(self):
         text = "I'll send the file. Also I'll send the file again later."
         found = promises.detect(text)
