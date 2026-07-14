@@ -874,10 +874,7 @@ struct MemoryTab: View {
                     if let c = memory?.confirmed, !c.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             ForEach(Array(c.enumerated()), id: \.offset) { i, line in
-                                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                    Text("•").foregroundStyle(Theme.wisp)
-                                    RichText(text: line).font(.callout)
-                                }
+                                ConfirmedRow(line: line) { act("memory/forget", line) }
                                 if i < c.count - 1 { Divider().opacity(0.25) }
                             }
                         }
@@ -927,6 +924,28 @@ struct MemoryTab: View {
 
     @MainActor private func reload() async {
         memory = try? await RewispAPI.get("memory", as: RewispAPI.Memory.self)
+    }
+}
+
+// A confirmed memory fact — delete button fades in on hover so the list stays clean.
+private struct ConfirmedRow: View {
+    let line: String
+    let onDelete: () -> Void
+    @State private var hover = false
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("•").foregroundStyle(Theme.wisp)
+            RichText(text: line).font(.callout)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: onDelete) {
+                Image(systemName: "xmark.circle.fill").font(.body).foregroundStyle(.secondary)
+            }
+            .buttonStyle(HoverButton())
+            .opacity(hover ? 1 : 0)
+            .help("Forget this fact")
+        }
+        .contentShape(Rectangle())
+        .onHover { hover = $0 }
     }
 }
 

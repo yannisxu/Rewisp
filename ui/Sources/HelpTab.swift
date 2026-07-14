@@ -1,44 +1,169 @@
 import SwiftUI
 import AppKit
 
-// Manual rendered natively from the bundled MANUAL.md — no browser, no GitHub.
-// Bug reports stay in-app too: a native sheet, copy or email, never a web tab.
+// A friendly help center: an animated demo, quick-start cards, an FAQ (expandable
+// Q&As), keyboard shortcuts, troubleshooting, and the full searchable manual —
+// all native, no browser. Bug reports stay in-app too.
 struct HelpTab: View {
     @State private var manual: String = ""
     @State private var query = ""
     @State private var showReport = false
 
+    private var searching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 22) {
                 HStack(alignment: .top) {
-                    TabHeader(title: "Help", subtitle: "The manual, and a place to tell me what broke.")
+                    TabHeader(title: "Help", subtitle: "How Rewisp works — answers, shortcuts, and the full manual.")
                     Spacer()
                     Button { showReport = true } label: {
                         Label("Report a bug", systemImage: "ladybug.fill")
                     }
                 }
 
-                HStack {
-                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    TextField("Search the manual", text: $query)
-                        .textFieldStyle(.plain)
-                }
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                searchBox
 
-                if filteredBlocks.isEmpty {
-                    Card { Text("No matches for “\(query)”.").font(.callout).foregroundStyle(.secondary) }
+                if searching {
+                    searchResults
                 } else {
-                    ForEach(Array(filteredBlocks.enumerated()), id: \.offset) { _, block in
-                        ManualBlockView(block: block)
-                    }
+                    HelpDemo()
+                    quickStart
+                    faqSection("Frequently asked", HelpContent.faq)
+                    shortcutsCard
+                    faqSection("Troubleshooting", HelpContent.troubleshooting)
+                    fullManualSection
+                    stillStuck
                 }
             }
             .padding(28)
         }
         .task { manual = Self.loadManual() }
         .sheet(isPresented: $showReport) { BugReportSheet() }
+    }
+
+    private var searchBox: some View {
+        HStack {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField("Search help & the manual", text: $query)
+                .textFieldStyle(.plain)
+            if searching {
+                Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }
+                    .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 9)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    @ViewBuilder private var searchResults: some View {
+        let needle = query.lowercased()
+        let faqHits = (HelpContent.faq + HelpContent.troubleshooting)
+            .filter { $0.q.lowercased().contains(needle) || $0.a.lowercased().contains(needle) }
+        if !faqHits.isEmpty {
+            faqSection("Answers", faqHits)
+        }
+        if filteredBlocks.isEmpty && faqHits.isEmpty {
+            Card { Text("No matches for “\(query)”.").font(.callout).foregroundStyle(.secondary) }
+        } else if !filteredBlocks.isEmpty {
+            Text("From the manual").font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary).textCase(.uppercase)
+            ForEach(Array(filteredBlocks.enumerated()), id: \.offset) { _, block in
+                ManualBlockView(block: block)
+            }
+        }
+    }
+
+    private var quickStart: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Start here")
+            HStack(spacing: 12) {
+                QuickCard(symbol: "sparkle.magnifyingglass", tint: Theme.accent,
+                          title: "Ask anything", detail: "Press ⌘⇧Space anywhere and type a plain-English question.")
+                QuickCard(symbol: "checklist", tint: .green,
+                          title: "It handles the rest", detail: "Fills forms, tracks numbers, holds promises — all from Today.")
+                QuickCard(symbol: "lock.shield.fill", tint: .blue,
+                          title: "Private by default", detail: "Screenshots are never saved. Everything stays on this Mac.")
+            }
+        }
+    }
+
+    private func faqSection(_ title: String, _ items: [HelpContent.QA]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle(title)
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.offset) { i, qa in
+                    FAQItem(qa: qa)
+                    if i < items.count - 1 { Divider().opacity(0.3) }
+                }
+            }
+            .padding(.horizontal, 4)
+            .background(.quaternary.opacity(0.28), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.06)))
+        }
+    }
+
+    private var shortcutsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Keyboard shortcuts")
+            Card {
+                ForEach(Array(HelpContent.shortcuts.enumerated()), id: \.offset) { i, sc in
+                    HStack {
+                        Text(sc.what).font(.callout)
+                        Spacer()
+                        ForEach(sc.keys, id: \.self) { k in
+                            Text(k).font(.callout.weight(.medium).monospaced())
+                                .padding(.horizontal, 8).padding(.vertical, 3)
+                                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+                        }
+                    }
+                    if i < HelpContent.shortcuts.count - 1 { Divider().opacity(0.25).padding(.vertical, 2) }
+                }
+            }
+        }
+    }
+
+    @State private var manualExpanded = false
+    private var fullManualSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { manualExpanded.toggle() }
+            } label: {
+                HStack {
+                    sectionTitle("Full manual")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold)).foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(manualExpanded ? 90 : 0))
+                }
+            }
+            .buttonStyle(.plain)
+            if manualExpanded {
+                ForEach(Array(allBlocks.enumerated()), id: \.offset) { _, block in
+                    ManualBlockView(block: block)
+                }
+            }
+        }
+    }
+
+    private var stillStuck: some View {
+        Card {
+            HStack(spacing: 14) {
+                Image(systemName: "lifepreserver.fill").font(.title2).foregroundStyle(Theme.wisp)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Still stuck?").font(.callout.weight(.semibold))
+                    Text("Tell me what broke — nothing from your history is attached.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button { showReport = true } label: { Label("Report a bug", systemImage: "ladybug.fill") }
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+    }
+
+    private func sectionTitle(_ s: String) -> some View {
+        Text(s).font(.title3.weight(.semibold))
     }
 
     // "## Section" boundaries -> renderable chunks, so search can hide whole
@@ -72,6 +197,13 @@ struct HelpTab: View {
         return [block]
     }
 
+    private var allBlocks: [String] {
+        sections.flatMap { $0.components(separatedBy: "\n\n") }
+            .flatMap(Self.splitHeaderFromBody)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
     private static func loadManual() -> String {
         if let url = Bundle.main.url(forResource: "MANUAL", withExtension: "md"),
            let text = try? String(contentsOf: url, encoding: .utf8) {
@@ -82,6 +214,166 @@ struct HelpTab: View {
             .appendingPathComponent("Code/Rewisp/docs/MANUAL.md")
         return (try? String(contentsOf: devPath, encoding: .utf8))
             ?? "Manual not found in this build."
+    }
+}
+
+// MARK: - Help content
+
+enum HelpContent {
+    struct QA { let q: String; let a: String }
+    struct Shortcut { let what: String; let keys: [String] }
+
+    static let faq: [QA] = [
+        .init(q: "How do I ask Rewisp a question?",
+              a: "Press **⌘⇧Space** anywhere to open the search bar, type a plain-English question, and hit Enter. Or use the **Chat** tab for a longer conversation. Try things like *“what was that repo on Tuesday?”* or *“what’s my advisor’s email?”*"),
+        .init(q: "What exactly is a “wisp”?",
+              a: "A wisp is a text snapshot of your screen. When something meaningful changes, Rewisp reads the text on screen (locally) and stores just that — the screenshot itself is **never saved**."),
+        .init(q: "Is my data private?",
+              a: "Yes, by design. Screenshots are read in memory and discarded — never written to disk. Everything stays in one file on this Mac. Quick answers run on Apple’s on-device model. Messages, banking sites, password apps, and private windows are never captured at all."),
+        .init(q: "How does form autofill work?",
+              a: "On any signup or checkout page, press **⌘⇧Space** — Rewisp reads the fields and fills them from your Vault. It **never fills passwords or card numbers, and never submits** the form. You review and send."),
+        .init(q: "Which AI answers my questions?",
+              a: "Apple’s free on-device model tries first (private, instant). If it comes up short, Rewisp escalates to whatever you’ve set up — Claude, ChatGPT, free Gemini, or a local model. A badge on each answer shows who replied."),
+        .init(q: "Does it cost anything?",
+              a: "No. Rewisp only uses subscriptions you already have or free keys — never a paid per-token API key. It refuses to run if a billable API key is set, so you can’t be surprised by a charge."),
+        .init(q: "Can I make it forget something?",
+              a: "Yes. Menu bar → **Forget 10 min** wipes the last ten minutes. You can also pause capture with **⌘⌥P**. Everything auto-expires after about six months regardless."),
+        .init(q: "What are Promises and how do they show up?",
+              a: "Rewisp notices when you commit to something on screen (*“I’ll send it Friday”*) and holds it on **Today → Promises** — what you owe and what you’re waiting on. You never type them; confirm to keep, check off when done."),
+        .init(q: "Why does it sometimes say “not found in your memory”?",
+              a: "Rewisp only answers from what it actually saw on your screen. If it says not found, that information genuinely wasn’t captured — it won’t guess or make something up."),
+    ]
+
+    static let troubleshooting: [QA] = [
+        .init(q: "The menu bar says the daemon isn’t running",
+              a: "Run this in Terminal: `launchctl kickstart -k gui/$(id -u)/com.rewisp.daemon`. Then reopen Rewisp from Applications."),
+        .init(q: "It’s not capturing anything",
+              a: "Rewisp needs Screen Recording permission. Open System Settings → Privacy & Security → Screen & System Audio Recording and enable **Python**. Also check you’re not paused (⌘⌥P)."),
+        .init(q: "Answers feel stale or wrong",
+              a: "Check the source timestamp on the answer — Rewisp only knows what it saw. If an answer is thin, try rephrasing, or switch your engine in Settings → Answers."),
+        .init(q: "The search panel won’t appear",
+              a: "Make sure the menu bar app is running (open Rewisp from Applications). The shortcut is ⌘⇧Space; you can’t currently rebind it."),
+    ]
+
+    static let shortcuts: [Shortcut] = [
+        .init(what: "Ask anything, anywhere", keys: ["⌘", "⇧", "Space"]),
+        .init(what: "Pause / resume capture", keys: ["⌘", "⌥", "P"]),
+        .init(what: "Clear the panel, then close", keys: ["esc"]),
+    ]
+}
+
+// MARK: - Help components
+
+private struct QuickCard: View {
+    let symbol: String; let tint: Color; let title: String; let detail: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: symbol)
+                .font(.title2).foregroundStyle(tint).symbolRenderingMode(.hierarchical)
+            Text(title).font(.callout.weight(.semibold))
+            Text(detail).font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minHeight: 128, alignment: .top)
+        .padding(16)
+        .background(.quaternary.opacity(0.28), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.06)))
+    }
+}
+
+private struct FAQItem: View {
+    let qa: HelpContent.QA
+    @State private var open = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { open.toggle() }
+            } label: {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "questionmark.circle.fill")
+                        .foregroundStyle(Theme.wisp).font(.body)
+                    Text(qa.q).font(.callout.weight(.medium))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.down").font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(open ? 180 : 0))
+                }
+                .padding(.vertical, 13).padding(.horizontal, 12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if open {
+                mdText(qa.a).font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 12).padding(.leading, 22).padding(.bottom, 14)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+}
+
+// A looping mini search-panel demo — types a question, shows the answer, so Help
+// visually explains what ⌘⇧Space does.
+private struct HelpDemo: View {
+    private let scripts: [(q: String, a: String, badge: String)] = [
+        ("what was due july 12?", "Quiz 3.2 — due July 12 at 11:59 PM", "Apple on-device"),
+        ("that camping video last night?", "3 Days Stove Hut Camping in Heavy Snowfall", "Gemini"),
+        ("what changed on this page?", "This page changed: 3 added, 1 removed.", "Delta"),
+    ]
+    @State private var idx = 0
+    @State private var typed = ""
+    @State private var showAnswer = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles").foregroundStyle(Theme.wisp)
+                Text(typed.isEmpty ? " " : typed).font(.title3)
+                Rectangle().fill(Theme.accent).frame(width: 2, height: 20)
+                    .opacity(showAnswer ? 0 : 1)
+                Spacer()
+                Text("⌘⇧Space").font(.caption.monospaced()).foregroundStyle(.tertiary)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(.quaternary.opacity(0.5), in: Capsule())
+            }
+            .padding(.horizontal, 16).frame(height: 54)
+            if showAnswer {
+                Divider().opacity(0.4)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(scripts[idx].a).font(.callout.weight(.medium))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(scripts[idx].badge).font(.caption2)
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(.quaternary.opacity(0.6), in: Capsule())
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .transition(.opacity.combined(with: .offset(y: 6)))
+            }
+        }
+        .background(.quaternary.opacity(0.22), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.07)))
+        .task { await loop() }
+    }
+
+    private func loop() async {
+        while !Task.isCancelled {
+            typed = ""; showAnswer = false
+            let q = scripts[idx].q
+            for ch in q {
+                typed.append(ch)
+                try? await Task.sleep(for: .milliseconds(45))
+            }
+            try? await Task.sleep(for: .milliseconds(450))
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showAnswer = true }
+            try? await Task.sleep(for: .seconds(3))
+            withAnimation(.easeOut(duration: 0.25)) { showAnswer = false }
+            try? await Task.sleep(for: .milliseconds(350))
+            idx = (idx + 1) % scripts.count
+        }
     }
 }
 

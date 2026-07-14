@@ -390,6 +390,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._memory_move(body.get("line", ""), approve=True)
             elif self.path == "/memory/delete":
                 self._memory_move(body.get("line", ""), approve=False)
+            elif self.path == "/memory/forget":
+                ok = memory.forget(body.get("line", ""))
+                confirmed, pending = memory.read_sections()
+                self._json({"ok": ok, "confirmed": confirmed, "pending": pending})
             elif self.path == "/settings":
                 self._json(config.save_settings(body))
             elif self.path == "/gemini-test":

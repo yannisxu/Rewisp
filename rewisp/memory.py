@@ -38,6 +38,29 @@ def confirmed_text() -> str:
     return "\n".join(f"- {c}" for c in confirmed)
 
 
+def _write_sections(confirmed: list[str], pending: list[str]) -> None:
+    text = "# Rewisp memory\n\n## Confirmed\n"
+    text += "".join(f"- {c}\n" for c in confirmed)
+    text += "\n## Pending (approve or delete)\n"
+    text += "".join(f"- {p}\n" for p in pending)
+    config.MEMORY_PATH.write_text(text)
+
+
+def forget(line: str) -> bool:
+    """Remove a line from either section (lets the user delete a Confirmed fact
+    from the Memory tab, not just Pending). True if something was removed."""
+    ensure_file()
+    confirmed, pending = read_sections()
+    removed = False
+    if line in confirmed:
+        confirmed.remove(line); removed = True
+    if line in pending:
+        pending.remove(line); removed = True
+    if removed:
+        _write_sections(confirmed, pending)
+    return removed
+
+
 def _similar(a: str, b: str) -> bool:
     """Fuzzy near-duplicate check — the digest often re-proposes a fact it already
     learned, worded differently ('DS student at UCSD…' vs 'Data Science student at

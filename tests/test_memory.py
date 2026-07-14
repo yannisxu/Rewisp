@@ -16,3 +16,20 @@ class TestSimilar:
         assert not memory._similar("Prefers short answers", "Prioritizing robotics internships")
         assert not memory._similar("Uses Claude Pro", "Uses Gemini as fallback")
         assert not memory._similar("Studies late at night", "Prefers dark mode")
+
+
+class TestForget:
+    def test_forget_removes_confirmed(self, tmp_path, monkeypatch):
+        f = tmp_path / "memory.md"
+        f.write_text("# Rewisp memory\n\n## Confirmed\n- keep this\n- remove this\n\n## Pending (approve or delete)\n- pending one\n")
+        monkeypatch.setattr(memory.config, "MEMORY_PATH", f)
+        assert memory.forget("remove this") is True
+        confirmed, pending = memory.read_sections()
+        assert "remove this" not in confirmed and "keep this" in confirmed
+        assert "pending one" in pending
+
+    def test_forget_missing_line(self, tmp_path, monkeypatch):
+        f = tmp_path / "memory.md"
+        f.write_text("# Rewisp memory\n\n## Confirmed\n- a\n\n## Pending (approve or delete)\n")
+        monkeypatch.setattr(memory.config, "MEMORY_PATH", f)
+        assert memory.forget("nope") is False
