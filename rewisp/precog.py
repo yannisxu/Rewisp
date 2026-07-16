@@ -39,6 +39,16 @@ def mark_tapped(conn, text: str) -> None:
     conn.commit()
 
 
+def _worth_suggesting(text: str) -> bool:
+    """A past query worth re-offering: question-shaped, not a test/typo blip."""
+    words = text.split()
+    if not 3 <= len(words) <= 14:
+        return False
+    if text.lower().startswith(("test", "asdf", "http")):
+        return False
+    return True
+
+
 def _current_screen(conn) -> tuple[str, str]:
     row = conn.execute(
         "SELECT app, ocr_text FROM captures ORDER BY id DESC LIMIT 1").fetchone()
@@ -64,8 +74,11 @@ def suggest(conn, limit: int = 3) -> list[str]:
         if n >= 2:
             out.append("What changed on this page?")
 
-    # History ranked by similarity to the current screen.
+    # History ranked by similarity to the current screen. Two tiers: queries
+    # semantically NEAR the screen (sim floor — otherwise a random old Netflix
+    # question rides along on every page), then recent queries as padding.
     qvec = embed.embed_vec(screen[:2000]) if screen else None
+    recents: list[str] = []
     if qvec is not None:
         import numpy as np
         rows = conn.execute(
@@ -74,18 +87,26 @@ def suggest(conn, limit: int = 3) -> list[str]:
         scored = []
         seen = {o.lower() for o in out}
         for text, blob, tapped, ts in rows:
-            if not text or text.lower() in seen:
+            if not text or text.lower() in seen or not _worth_suggesting(text):
                 continue
+            seen.add(text.lower())
+            if len(recents) < 10:
+                recents.append(text)
             v = np.frombuffer(blob, dtype=np.float32)
             sim = float(np.asarray(qvec) @ v)
-            score = sim + (0.15 if tapped else 0.0)
+            if sim < 0.25:
+                continue                       # unrelated to this screen
+            recent = ts >= db.utcnow()[:10]    # asked today
+            score = sim + (0.15 if tapped else 0.0) + (0.05 if recent else 0.0)
             scored.append((score, text))
-            seen.add(text.lower())
         scored.sort(key=lambda x: -x[0])
-        for _s, text in scored:
-            if len(out) >= limit + 2:
+        out.extend(text for _s, text in scored[: limit + 2 - len(out)])
+        # Pad with recent good queries only if the relevant tier came up short.
+        for text in recents:
+            if len(out) >= limit:
                 break
-            out.append(text)
+            if text not in out:
+                out.append(text)
 
     # Fuzzy de-dupe: 'what show was i watching just now?' and '…just now on
     # netflix?' are the same suggestion. Drop a candidate that's a prefix of, or
