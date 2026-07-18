@@ -81,6 +81,18 @@ struct RewispAPI {
     }
     struct Nudges: Decodable { var nudges: [Nudge] }
 
+    struct MCPStatus: Decodable {
+        var connected: Bool
+        var last_seen: String?
+        var last_tool: String?
+        var calls: Int?
+        var client: String?
+        var expose_vault: Bool?
+        var cli_command: String?
+        var json_block: String?
+        var desktop_installed: Bool?
+    }
+
     struct Promise: Decodable, Identifiable, Hashable {
         var id: Int
         var who: String       // "me" = you owe, "them" = waiting on them

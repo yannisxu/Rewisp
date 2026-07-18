@@ -198,21 +198,26 @@ looks it up in your Vault/history with a Copy button. Rewisp never types into
 or submits forms — you paste it yourself.
 
 ### Connect to AI agents (MCP)
-Rewisp can hand its memory to **Claude Code, Claude Desktop, or any MCP client**
+Rewisp can hand its memory to **Claude Desktop, Claude Code, or any MCP client**
 so an agent can search your screen history, diff pages, and read your promises
-while it works. Copy the one-line command from **Settings → Your data → Connect
-to AI agents**, or run:
+while it works. It's a dedicated section: **Settings → Connect agents**, with a
+live status banner that turns green the moment an agent first queries.
 
-```
-claude mcp add rewisp -e PYTHONPATH="<daemon dir>" -- python3 -m rewisp mcp
-```
+Three ways to set it up (all in that section):
+- **Claude Desktop** — click **Add to Claude Desktop**; Rewisp writes the config
+  for you. Quit and reopen Claude Desktop and "rewisp" shows under its Connectors.
+- **Claude Code** — copy the one-line `claude mcp add rewisp …` command into a terminal.
+- **Other client** — copy the raw `mcpServers` JSON block into your client's config.
+
+**Test it:** ask the agent *"What did I work on yesterday?"* or *"What have I
+promised this week?"* — if it answers from your history, you're connected.
 
 It exposes five read-only tools — `search_memory`, `get_context`,
 `get_day_summary`, `get_promises`, `get_page_changes`. It is **read-only** (no
 tool can write or delete), **local** (stdio — no network listener), and it
 **never calls a cloud engine**, so an outside agent can never spend your
 subscriptions. Your **Vault stays private** unless you flip "Also expose the
-Vault" in that same card.
+Vault" in that section.
 
 ---
 

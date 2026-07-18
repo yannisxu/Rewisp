@@ -222,6 +222,27 @@ class Handler(BaseHTTPRequestHandler):
                             "old_ts": old["ts"], "new_ts": new["ts"], **d})
             elif self.path == "/nudges":
                 self._json({"nudges": db.pending_nudges(conn)})
+            elif self.path == "/mcp-status":
+                # Has an external agent connected over MCP, and when did it last query?
+                import json as _json_mod
+                from . import mcp as _mcp
+                act = {}
+                if _mcp.ACTIVITY_PATH.exists():
+                    try:
+                        act = _json_mod.loads(_mcp.ACTIVITY_PATH.read_text())
+                    except (ValueError, OSError):
+                        act = {}
+                self._json({
+                    "connected": bool(act.get("last_seen")),
+                    "last_seen": act.get("last_seen"),
+                    "last_tool": act.get("last_tool"),
+                    "calls": act.get("calls", 0),
+                    "client": act.get("client"),
+                    "expose_vault": config.load_settings().get("mcp_expose_vault", False),
+                    "cli_command": _mcp.cli_command(),
+                    "json_block": _json_mod.dumps({"mcpServers": {"rewisp": _mcp.server_entry()}}, indent=2),
+                    "desktop_installed": _mcp.desktop_installed(),
+                })
             elif self.path == "/forgetting":
                 # Your forgetting signature + what's about to fade + pinned facts.
                 from . import forgetting
@@ -386,6 +407,9 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path == "/nudge/delivered":
                 db.mark_nudge_delivered(conn, int(body.get("id", 0)))
                 self._json({"ok": True})
+            elif self.path == "/mcp/install-desktop":
+                from . import mcp as _mcp
+                self._json(_mcp.install_to_desktop())
             elif self.path == "/nudge/test":
                 # Enqueue a demo nudge so the pill UI can be seen while nudges are
                 # still disabled. Points at the most recent real wisp if there is one.

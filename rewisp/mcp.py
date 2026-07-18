@@ -30,6 +30,29 @@ log = logging.getLogger("rewisp")
 PROTOCOL_VERSION = "2024-11-05"
 SERVER_INFO = {"name": "rewisp", "version": "0.10.0"}
 
+# The MCP server runs as a separate short-lived process spawned by the client, so
+# the menu-bar app can't see it directly. It records a heartbeat here on every
+# meaningful event; the UI polls /mcp-status to show "Connected · last queried…".
+ACTIVITY_PATH = config.DATA_DIR / ".mcp_activity.json"
+
+
+def _record(event: str, tool: str | None = None) -> None:
+    try:
+        cur = {}
+        if ACTIVITY_PATH.exists():
+            cur = json.loads(ACTIVITY_PATH.read_text())
+        cur["last_seen"] = db.utcnow()
+        cur["last_event"] = event
+        if tool:
+            cur["last_tool"] = tool
+            cur["calls"] = int(cur.get("calls", 0)) + 1
+        if event == "connected":
+            cur["client"] = cur.get("client")     # filled from initialize params
+        config.ensure_dirs()
+        ACTIVITY_PATH.write_text(json.dumps(cur))
+    except Exception:  # noqa: BLE001 — telemetry-ish, never fail a request over it
+        pass
+
 # ── tools ─────────────────────────────────────────────────────────────────────
 
 TOOLS = [
@@ -252,6 +275,60 @@ HANDLERS = {
 
 # ── JSON-RPC over stdio ───────────────────────────────────────────────────────
 
+# ── one-click install into MCP clients ───────────────────────────────────────
+
+def _package_dir() -> str:
+    """Directory that CONTAINS the `rewisp` package (so python -m rewisp works)."""
+    from pathlib import Path
+    return str(Path(__file__).resolve().parent.parent)
+
+
+def server_entry() -> dict:
+    """The mcpServers config block every client understands. Uses this exact
+    interpreter (it has the deps) and points PYTHONPATH at the package dir."""
+    return {
+        "command": sys.executable,
+        "args": ["-m", "rewisp", "mcp"],
+        "env": {"PYTHONPATH": _package_dir()},
+    }
+
+
+def cli_command() -> str:
+    return (f'claude mcp add rewisp -e PYTHONPATH="{_package_dir()}" '
+            f'-- "{sys.executable}" -m rewisp mcp')
+
+
+def desktop_config_path():
+    return (config.HOME / "Library" / "Application Support" / "Claude"
+            / "claude_desktop_config.json")
+
+
+def desktop_installed() -> bool:
+    p = desktop_config_path()
+    if not p.exists():
+        return False
+    try:
+        return "rewisp" in (json.loads(p.read_text()).get("mcpServers") or {})
+    except (ValueError, OSError):
+        return False
+
+
+def install_to_desktop() -> dict:
+    """Merge the rewisp server into Claude Desktop's config (creating it if
+    needed). Non-destructive — preserves any other configured servers."""
+    p = desktop_config_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    cfg = {}
+    if p.exists():
+        try:
+            cfg = json.loads(p.read_text())
+        except ValueError:
+            cfg = {}
+    cfg.setdefault("mcpServers", {})["rewisp"] = server_entry()
+    p.write_text(json.dumps(cfg, indent=2))
+    return {"ok": True, "path": str(p)}
+
+
 def _reply(msg_id, result=None, error=None):
     out = {"jsonrpc": "2.0", "id": msg_id}
     if error is not None:
@@ -266,8 +343,17 @@ def handle(msg: dict) -> None:
     method = msg.get("method")
     msg_id = msg.get("id")
     if method == "initialize":
+        params = msg.get("params", {})
+        client = (params.get("clientInfo") or {}).get("name")
+        try:
+            cur = json.loads(ACTIVITY_PATH.read_text()) if ACTIVITY_PATH.exists() else {}
+            cur["client"] = client or cur.get("client")
+            config.ensure_dirs(); ACTIVITY_PATH.write_text(json.dumps(cur))
+        except Exception:  # noqa: BLE001
+            pass
+        _record("connected")
         _reply(msg_id, {
-            "protocolVersion": msg.get("params", {}).get("protocolVersion", PROTOCOL_VERSION),
+            "protocolVersion": params.get("protocolVersion", PROTOCOL_VERSION),
             "capabilities": {"tools": {}},
             "serverInfo": SERVER_INFO,
         })
@@ -286,6 +372,7 @@ def handle(msg: dict) -> None:
             return
         try:
             text = fn(params.get("arguments") or {})
+            _record("call", tool=name)
             _reply(msg_id, {"content": [{"type": "text", "text": text}], "isError": False})
         except Exception as e:  # noqa: BLE001 — report, don't crash the server
             log.exception("mcp tool %s failed", name)
