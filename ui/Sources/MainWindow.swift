@@ -1389,6 +1389,8 @@ struct SettingsTab: View {
                 }
             }
             MemoryLayersCard()
+
+            ForgettingCard()
         }
     }
 

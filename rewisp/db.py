@@ -121,6 +121,14 @@ CREATE TABLE IF NOT EXISTS queries (
   was_tapped INTEGER DEFAULT 0,
   embedding BLOB
 );
+
+CREATE TABLE IF NOT EXISTS pinned (          -- facts you kept re-asking, kept forever
+  id INTEGER PRIMARY KEY,
+  question TEXT,
+  answer TEXT,
+  embedding BLOB,
+  created_at TEXT
+);
 """
 
 
@@ -151,6 +159,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
         # higher and survives consolidation/retention longer.
         conn.execute("ALTER TABLE captures ADD COLUMN recall_count INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE captures ADD COLUMN last_recalled TEXT")
+        conn.commit()
+    if "rescued" not in cols:
+        # Forgetting model: a wisp gets ONE "about to fade" rescue mention, ever.
+        conn.execute("ALTER TABLE captures ADD COLUMN rescued INTEGER DEFAULT 0")
         conn.commit()
 
 

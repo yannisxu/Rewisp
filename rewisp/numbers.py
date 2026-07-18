@@ -37,11 +37,26 @@ _CHROME_LABEL = re.compile(
 # Numbers worth tracking almost always carry a unit OR a metric word. Requiring
 # one kills the ocean of OCR-fragment noise ("Thought for 15", "Episode 3",
 # "python 3", date fragments) without a brittle blocklist.
+# NOTE: views/subscribers/likes deliberately absent — every video page shows
+# them, and they charted as junk series in live use.
 _METRIC_LABEL = re.compile(
     r"\b(weight|grade|score|gpa|price|cost|balance|total|amount|rank|rating|"
-    r"temp|temperature|followers?|subscribers?|steps?|calories|cals?|streak|"
-    r"level|progress|hours?|points?|reps?|sets?|miles?|km|pace|bpm|heart|"
-    r"revenue|profit|sales|views|likes|stock|shares?|price|pts)\b", re.I)
+    r"temp|temperature|steps?|calories|cals?|streak|"
+    r"level|progress|points?|reps?|sets?|miles?|km|pace|bpm|heart|"
+    r"revenue|profit|sales|stock|shares?|pts)\b", re.I)
+
+# Labels that are pure churn no matter what: engagement counters, relative
+# timestamps ("3 hours ago"), K/M-suffix fragments, and the literal word "label".
+_JUNK_LABEL = re.compile(
+    r"\b(views?|subscribers?|likes?|comments?|commented|watching|ago|label|"
+    r"followers?|shares?d?|upvotes?|replies|reposts?)\b|^[kmb]\b", re.I)
+
+# Media/feed sites: every page is a firehose of engagement numbers; nothing
+# there is a personal metric. page_key strips URL queries, so all youtube
+# /watch pages share one key and random videos would chart as fake trends.
+_MEDIA_KEY = re.compile(
+    r"(youtube\.com|netflix\.com|twitch\.tv|hulu\.com|tiktok\.com|instagram\.com|"
+    r"reddit\.com|x\.com|twitter\.com)", re.I)
 
 
 _LABEL_TRIM_LEAD = re.compile(r"^(?:my|the|your|our|current|total)\s+", re.I)
@@ -78,7 +93,8 @@ def detect(text: str) -> list[dict]:
             continue
         for m in _PAIR.finditer(line):
             label = m.group("label").strip()
-            if len(label) < 3 or _CRED_LABEL.search(label) or _CHROME_LABEL.search(label):
+            if len(label) < 3 or _CRED_LABEL.search(label) or _CHROME_LABEL.search(label) \
+               or _JUNK_LABEL.search(label):
                 continue
             num_str = m.group("num")
             try:
@@ -107,7 +123,7 @@ def scan_and_store(conn, wisp_id: int, page_key: str, text: str,
                    max_per_capture: int = 8) -> int:
     """Store observations for this capture. Dedups the same key+value seen again
     within ~a day (a static number that keeps appearing shouldn't pile up rows)."""
-    if not page_key:
+    if not page_key or _MEDIA_KEY.search(page_key):
         return 0
     found = detect(text)[:max_per_capture]
     added = 0

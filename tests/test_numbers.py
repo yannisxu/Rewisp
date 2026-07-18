@@ -108,3 +108,18 @@ class TestLabelNormalization:
         conn.commit()
         for q in ["how has my weight moved", "weight over time", "how is my weight doing"]:
             assert numbers.lookup(conn, q), q
+
+
+class TestJunkSeries:
+    def test_engagement_and_relative_time_labels_rejected(self):
+        from rewisp import numbers
+        for t in ["1.2K Views 47", "M Subscribers 4", "3 hours ago 10",
+                  "Commented 11 hours", "Label 7"]:
+            assert numbers.detect(t) == [], t
+
+    def test_media_pages_never_scanned(self, conn):
+        from rewisp import db, numbers
+        rid = db.insert_capture(conn, "Dia", None, None, "x")
+        n = numbers.scan_and_store(conn, rid, "https://www.youtube.com/watch",
+                                   "Weight 182 lbs")
+        assert n == 0

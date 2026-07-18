@@ -439,9 +439,10 @@ def build_prompt(question: str, compact: bool = False) -> tuple[str, dict]:
         # Deterministic hits skip the model entirely: 'what changed here' -> a
         # page diff; 'how has my weight moved' -> a tracked series; a personal
         # fact -> the exact Vault value.
-        from . import numbers, precog
+        from . import forgetting, numbers, precog
         precog.log_query(conn, question)   # feeds Precognition's guesses
-        fact = (delta_answer(conn, question) or numbers.lookup(conn, question)
+        fact = (forgetting.pinned_answer(conn, question)
+                or delta_answer(conn, question) or numbers.lookup(conn, question)
                 or vault_fact(conn, question))
         context, meta = build_context(conn, question, compact=compact)
         if fact:
@@ -772,8 +773,9 @@ def near_misses(conn, question: str, limit: int = 3) -> str | None:
 
 def ask(question: str, save: bool = True) -> tuple[str, dict]:
     conn = db.connect()
-    from . import numbers
-    fact = delta_answer(conn, question) or numbers.lookup(conn, question) or vault_fact(conn, question)
+    from . import forgetting, numbers
+    fact = (forgetting.pinned_answer(conn, question) or delta_answer(conn, question)
+            or numbers.lookup(conn, question) or vault_fact(conn, question))
     if fact:
         meta = {"answer": fact["answer"], "source": fact.get("source"),
                 "detail": fact.get("detail"), "time": fact.get("time"),
@@ -808,4 +810,9 @@ def ask(question: str, save: bool = True) -> tuple[str, dict]:
         conn.execute("INSERT INTO chats (ts, role, content) VALUES (?, 'user', ?)", (ts, question))
         conn.execute("INSERT INTO chats (ts, role, content) VALUES (?, 'assistant', ?)", (ts, answer))
         conn.commit()
+        try:
+            from . import forgetting
+            forgetting.maybe_pin(conn, question, answer)   # 3rd lookup -> pinned
+        except Exception:  # noqa: BLE001
+            pass
     return answer, meta

@@ -65,6 +65,8 @@ def _salient_lines(texts: list[str], limit: int = 6) -> list[str]:
             low = ln.lower()
             if low.startswith(("dia file", "file edit", "http")) or "•" in ln[:3]:
                 continue
+            if delta._is_chrome(ln):
+                continue          # menu-bar soup ("Asana File Edit View … Help 80%")
             key = re.sub(r"[^a-z0-9 ]", "", low)[:50]
             if any(key in s or s in key for s in seen):
                 continue

@@ -204,13 +204,30 @@ def run(day: datetime | None = None, force: bool = False) -> dict | None:
     sections = parse_sections(answer)
     time_report = compute_time_report(conn, day)
 
+    # "About to fade" — the forgetting model's rescue slot. Computed locally
+    # (no cloud), one mention per wisp ever, appended to the digest summary at
+    # the moment spaced-repetition science says a reminder works best: right
+    # before the memory crosses your predicted forgetting cliff.
+    fade_md = ""
+    try:
+        from . import forgetting
+        fading = forgetting.about_to_fade(conn, limit=2)
+        if fading:
+            lines = [f"- {f['snippet'][:120]} — seen in {f['app']}, {f['ts'][:10]}"
+                     for f in fading]
+            fade_md = "\n\n### About to fade\n" + "\n".join(lines)
+            forgetting.mark_rescued(conn, [f["wisp_id"] for f in fading])
+    except Exception:  # noqa: BLE001 — rescue is a bonus, never breaks the digest
+        log.exception("about-to-fade failed")
+
     conn.execute(
         "INSERT INTO summaries (date, summary_md, threads_md, time_report_json) VALUES (?, ?, ?, ?) "
         "ON CONFLICT(date) DO UPDATE SET summary_md=excluded.summary_md, "
         "threads_md=excluded.threads_md, time_report_json=excluded.time_report_json",
         (date_str,
          sections["Summary"] + ("\n\n### Subtext\n" + sections["Subtext"]
-                                if sections["Subtext"] not in ("", "None.") else ""),
+                                if sections["Subtext"] not in ("", "None.") else "")
+         + fade_md,
          sections["Threads"],
          json.dumps(time_report)))
     conn.commit()

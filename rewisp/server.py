@@ -222,6 +222,15 @@ class Handler(BaseHTTPRequestHandler):
                             "old_ts": old["ts"], "new_ts": new["ts"], **d})
             elif self.path == "/nudges":
                 self._json({"nudges": db.pending_nudges(conn)})
+            elif self.path == "/forgetting":
+                # Your forgetting signature + what's about to fade + pinned facts.
+                from . import forgetting
+                pins = [{"question": q, "answer": a, "created_at": c} for q, a, c in
+                        conn.execute("SELECT question, answer, created_at FROM pinned "
+                                     "ORDER BY id DESC LIMIT 20")]
+                self._json({"signature": forgetting.signature(conn),
+                            "fading": forgetting.about_to_fade(conn, limit=3),
+                            "pinned": pins})
             elif self.path == "/promises":
                 self._json({
                     "pending": db.promises_by_status(conn, ("pending",)),
@@ -332,6 +341,11 @@ class Handler(BaseHTTPRequestHandler):
                     conn.execute("INSERT INTO chats (ts, role, content) VALUES (?, 'user', ?)", (ts, q))
                     conn.execute("INSERT INTO chats (ts, role, content) VALUES (?, 'assistant', ?)", (ts, a))
                     conn.commit()
+                    try:
+                        from . import forgetting
+                        forgetting.maybe_pin(conn, q, a)   # 3rd lookup -> pinned forever
+                    except Exception:  # noqa: BLE001
+                        pass
                 self._json({"ok": True})
             elif self.path == "/pause":
                 config.ensure_dirs()

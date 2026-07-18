@@ -103,6 +103,34 @@ struct RewispAPI {
     }
     struct SeriesList: Decodable { var series: [SeriesItem] }
 
+    // The Forgetting Model: your measured forgetting signature per category,
+    // wisps predicted to be fading, and auto-pinned facts.
+    struct ForgettingCat: Decodable {
+        var stability_days: Double
+        var events: Int
+        var observed: Int
+    }
+    struct FadingWisp: Decodable, Identifiable {
+        var wisp_id: Int
+        var ts: String
+        var app: String
+        var category: String
+        var snippet: String
+        var p_recall: Double
+        var id: Int { wisp_id }
+    }
+    struct PinnedFact: Decodable, Identifiable, Hashable {
+        var question: String
+        var answer: String
+        var created_at: String
+        var id: String { question + created_at }
+    }
+    struct Forgetting: Decodable {
+        var signature: [String: ForgettingCat]
+        var fading: [FadingWisp]
+        var pinned: [PinnedFact]
+    }
+
     struct Precog: Decodable { var suggestions: [String] }
 
     struct MemoryLayers: Decodable {
