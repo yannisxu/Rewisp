@@ -208,6 +208,7 @@ struct RewispAPI {
         var digest_hour: Int
         var digest_interval_days: Int
         var nudges_enabled: Bool?
+        var mcp_expose_vault: Bool?
         var available: EngineAvail?
     }
 

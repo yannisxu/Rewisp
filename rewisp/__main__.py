@@ -149,6 +149,11 @@ def main():
             total += n
             print(f"  …{total}/{missing}")
         print(f"done: embedded {total}, remaining {db.missing_embeddings(conn)}")
+    elif cmd == "mcp":
+        # Model Context Protocol server (stdio) — lets Claude Code / Desktop /
+        # any MCP client query your memory. Read-only; Vault excluded.
+        from . import mcp
+        mcp.serve()
     elif cmd == "axhelper":
         # Persistent, crash-isolated Accessibility worker. The daemon spawns and
         # talks to this over stdin/stdout so a segfault in AX can't take it down,

@@ -197,6 +197,23 @@ field behind it ("You were in a 'Email' field") and offers **Find mine**, which
 looks it up in your Vault/history with a Copy button. Rewisp never types into
 or submits forms — you paste it yourself.
 
+### Connect to AI agents (MCP)
+Rewisp can hand its memory to **Claude Code, Claude Desktop, or any MCP client**
+so an agent can search your screen history, diff pages, and read your promises
+while it works. Copy the one-line command from **Settings → Your data → Connect
+to AI agents**, or run:
+
+```
+claude mcp add rewisp -e PYTHONPATH="<daemon dir>" -- python3 -m rewisp mcp
+```
+
+It exposes five read-only tools — `search_memory`, `get_context`,
+`get_day_summary`, `get_promises`, `get_page_changes`. It is **read-only** (no
+tool can write or delete), **local** (stdio — no network listener), and it
+**never calls a cloud engine**, so an outside agent can never spend your
+subscriptions. Your **Vault stays private** unless you flip "Also expose the
+Vault" in that same card.
+
 ---
 
 ## Terminal reference
@@ -211,6 +228,7 @@ rewisp memory                 show confirmed + pending memory
 rewisp vault | rewisp-vault   open vault folder + reindex
 rewisp embed-backfill         compute semantic fingerprints for old wisps
 rewisp dream                  consolidate aged wisps into episodes now
+rewisp mcp                    MCP server for AI agents (read-only, stdio)
 ```
 
 ## Files & places

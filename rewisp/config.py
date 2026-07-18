@@ -34,6 +34,9 @@ DEFAULT_SETTINGS = {
     "nudges_enabled": False,
     "nudge_max_per_day": 3,
     "nudge_similarity": 0.82,        # cosine bar for a Déjà Vu match
+    # MCP server: external agents can query screen memory; the Vault (identity
+    # documents) stays out unless explicitly opted in.
+    "mcp_expose_vault": False,
 }
 
 # (browser support lives in browser.BROWSERS — Chromium family, Safari, Firefox title-only)

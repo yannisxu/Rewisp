@@ -1391,6 +1391,8 @@ struct SettingsTab: View {
             MemoryLayersCard()
 
             ForgettingCard()
+
+            ConnectorCard()
         }
     }
 
