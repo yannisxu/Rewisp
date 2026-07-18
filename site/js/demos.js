@@ -153,3 +153,41 @@ function whenVisible(el, fn, { once = false } = {}) {
   }
   whenVisible(el, play);
 })();
+
+/* ── screenshot carousel: auto-advance 3s, arrows + dots, pause on hover ── */
+(function carousel() {
+  const root = document.getElementById("carousel");
+  if (!root) return;
+  const imgs = [...root.querySelectorAll(".car-frame img")];
+  const cap = document.getElementById("car-cap");
+  const dotsWrap = document.getElementById("car-dots");
+  const stage = root.querySelector(".car-stage");
+  let i = 0, timer = null;
+
+  imgs.forEach((_, k) => {
+    const b = document.createElement("button");
+    b.setAttribute("aria-label", "Slide " + (k + 1));
+    b.addEventListener("click", () => { go(k); restart(); });
+    dotsWrap.appendChild(b);
+  });
+  const dots = [...dotsWrap.children];
+
+  function go(k) {
+    i = (k + imgs.length) % imgs.length;
+    imgs.forEach((im, j) => im.classList.toggle("on", j === i));
+    dots.forEach((d, j) => d.classList.toggle("on", j === i));
+    cap.style.opacity = "0";
+    setTimeout(() => { cap.textContent = imgs[i].dataset.cap; cap.style.opacity = "1"; }, 160);
+  }
+  const next = () => go(i + 1);
+  const start = () => { timer = setInterval(next, 3000); };
+  const restart = () => { clearInterval(timer); start(); };
+
+  document.getElementById("car-next").addEventListener("click", () => { next(); restart(); });
+  document.getElementById("car-prev").addEventListener("click", () => { go(i - 1); restart(); });
+  stage.addEventListener("mouseenter", () => clearInterval(timer));
+  stage.addEventListener("mouseleave", start);
+
+  go(0);
+  start();
+})();
