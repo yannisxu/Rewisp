@@ -142,6 +142,19 @@ data → Memory layers** (raw wisps → episodes), with a **Consolidate now** bu
 Wisps you actually ask about get **reinforced** (they rank higher and survive
 longer). Fully local, no extra AI call.
 
+### It learns how you forget
+Every failed search and re-asked question is a documented forgetting event —
+Rewisp fits **your own forgetting curve** per kind of fact (names, numbers,
+links, dates, places) and shows it in **Settings → Your data → How you forget**:
+five decay curves with "half-gone in ~N days" dots, drawn from your real slips.
+Two things act on it automatically:
+- **About to fade** — something you saw once and never revisited gets a single
+  rescue mention in the nightly digest, timed right before it crosses your
+  predicted forgetting cliff (the same trick that makes spaced repetition work).
+- **Pinned** — the ~3rd time you look up the same stable fact (a wifi password,
+  a door code, a link), Rewisp pins it: answered instantly, exactly, forever.
+  Time-dependent questions ("what did I do yesterday") are never pinned.
+
 ### Proactive recall (off by default)
 When the screen relates to something you saw before, Rewisp can slide a small
 **nudge pill** down from the menu bar — hover it to expand into the memory, 👍/👎

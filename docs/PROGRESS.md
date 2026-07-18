@@ -170,6 +170,17 @@ Dia (Chromium-based) fully supports Chrome-style AppleScript (`URL of active tab
 
 ---
 
+## v0.10.0 — it learns how you forget (2026-07-18)
+
+The Forgetting Model ships, plus a data-driven refinement sweep over live usage.
+- **The Forgetting Model** — failed searches and re-asked questions are mined as documented forgetting events; a per-category signature (names/numbers/links/dates/places) is fit from them. "How you forget" card in Settings → Your data draws your five animated decay curves with half-life dots. "About to fade" gives single-visit wisps one rescue mention in the digest at the spaced-repetition sweet spot; the ~3rd lookup of the same stable fact auto-pins it for instant deterministic recall (time-dependent questions can never pin — caught live).
+- **Answers** — "what did I do today" fixed (activity questions live purely off the time window; no more portfolio-PDF/old-episode bleed); long answers render as one bold lead + scannable bullets with all detail preserved (NNG-grounded); thin on-device day-summaries auto-escalate.
+- **Digest resilience** — engine-chain fallback (was Claude-only; a session limit killed the night) + 30-min retry backoff until an engine answers.
+- **Collection quality (from live data)** — Dock/Mission Control never captured; LockDown Browser kill-listed; sub-40-char subtitle fragments dropped; 2,212 junk number-series purged (engagement counters, media pages, K/M fragments blocked).
+- **Nudge pill** — pinned to the primary display (was following keyboard focus = "random places"), notch-safe, clean single-surface restyle.
+- **Quality gate** — scripts/check.sh (pytest + imports + build + endpoint smoke) as a pre-push hook.
+- Tests 108 → 132.
+
 ## v0.9.0 — promises that keep themselves (2026-07-16)
 
 The refinement cycle: multiple precision passes over the v0.8 features, grounded

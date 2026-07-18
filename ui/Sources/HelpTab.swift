@@ -240,6 +240,8 @@ enum HelpContent {
               a: "Yes. Menu bar → **Forget 10 min** wipes the last ten minutes. You can also pause capture with **⌘⌥P**. Everything auto-expires after about six months regardless."),
         .init(q: "What are Promises and how do they show up?",
               a: "Rewisp notices when you commit to something in places you write — Notes, Mail, Slack, Discord (*“I’ll send it Friday”*) — and holds it on **Today → Promises**. You never type them. **Confirming a promise arms its reminder**: on the due day a small pill slides down with the full commitment, once a day until you mark it done. AI chats, editors, and ads can never create promises."),
+        .init(q: "What is “How you forget”?",
+              a: "Rewisp treats every failed search and re-asked question as evidence of what *you* forget, and fits your personal forgetting curve per kind of fact — see **Settings → Your data**. Things you saw once get a rescue mention in the digest right before they fade, and a fact you’ve looked up ~3 times gets **pinned** — answered instantly, forever."),
         .init(q: "Why does it sometimes say “not found in your memory”?",
               a: "Rewisp only answers from what it actually saw on your screen — it won’t guess. And a miss isn’t a dead end: it shows **Closest moments in your memory**, the nearest things it did see, since half the time the wording was just remembered differently."),
     ]
