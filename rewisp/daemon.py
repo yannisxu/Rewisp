@@ -244,8 +244,17 @@ class Daemon:
         # for hours of real time after wake (observed 2026-07-08).
         last_retention = 0.0
         last_catchup = 0.0
+        import objc
         while True:
-            self.tick()
+            # Drain an autorelease pool every iteration. Every tick allocates
+            # autoreleased Objective-C objects (CGWindowListCopyWindowInfo twice a
+            # second, CGDisplayCreateImage, Vision request handlers, bitmap
+            # contexts). A Cocoa runloop drains these for you; a bare Python
+            # `while True:` never does, so they accumulate for the life of the
+            # process — measured 2.19 GB RSS after 17 hours. Scoping each tick to
+            # its own pool keeps the daemon flat.
+            with objc.autorelease_pool():
+                self.tick()
             now = time.time()
             if now - last_retention > 86_400:
                 last_retention = now
