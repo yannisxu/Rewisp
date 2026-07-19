@@ -54,9 +54,15 @@ Nightly Digest (9 PM) → one Claude call → recap · loose threads · memory
 | `scripts/` | DMG packaging + installer |
 | `site/` | Landing page |
 
-## Install (from source)
+## Install
 
-Requires macOS 15+ (on-device answers need macOS 26), Python 3.13 with `pyobjc`, and [Claude Code](https://claude.com/claude-code) signed in for Digest/fallback answers.
+Download the [latest DMG](https://github.com/yashmitb/Rewisp/releases/latest/download/Rewisp.dmg), drag Rewisp into Applications, right-click → **Open** (it isn't notarized yet), and grant Screen Recording to **Rewisp Backend** when asked.
+
+No Python required and nothing to run in Terminal: since v0.12 the app ships its own CPython runtime and provisions its launchd agents on first launch. Requires macOS 15+ (on-device answers need macOS 26).
+
+## Build from source
+
+Requires Python 3.13 with `pyobjc`, and [Claude Code](https://claude.com/claude-code) signed in for Digest/fallback answers.
 
 ```sh
 pip3 install pyobjc model2vec     # model2vec powers local semantic search (optional; falls back to keyword)
@@ -64,7 +70,7 @@ python3 -m rewisp daemon          # grant Screen Recording when prompted
 cd ui && ./build.sh --install     # builds + installs /Applications/Rewisp.app
 ```
 
-`scripts/install.sh` sets up launchd agents so the daemon runs on login and the Digest fires at 9 PM. `scripts/make_dmg.sh` builds a distributable DMG.
+`scripts/install.sh` sets up launchd agents so the daemon runs on login and the Digest fires at 9 PM (the shipped app does this itself; the script is the fallback). `scripts/bundle_python.sh` vendors the standalone CPython runtime into the bundle, and `scripts/make_dmg.sh` builds the distributable DMG. `scripts/fresh-test.sh backup|restore` rehearses a real install without losing your data.
 
 ## Privacy principles
 

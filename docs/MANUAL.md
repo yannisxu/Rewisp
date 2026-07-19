@@ -8,6 +8,18 @@ leaves the Mac); hard questions and the nightly digest use a stronger engine
 
 ---
 
+## Installing
+
+Download **Rewisp.dmg**, drag Rewisp into Applications, then right-click it and choose
+**Open** the first time (Rewisp isn't notarized yet, so a plain double-click gets
+blocked). Grant Screen Recording to **Rewisp Backend** when macOS asks.
+
+That's the whole install. There is nothing to run in Terminal and no Python to
+install — the app carries its own runtime and starts its background helper by
+itself the first time you open it. Illustrated walkthrough: `site/install.html`.
+
+---
+
 ## Daily use
 
 ### Ask anything, from anywhere
@@ -251,7 +263,14 @@ rewisp mcp                    MCP server for AI agents (read-only, stdio)
 ## If something's off
 
 - **Menu bar says daemon isn't running** → `launchctl kickstart -k gui/501/com.rewisp.daemon`
-- **Orange permission card** → System Settings → Privacy & Security → Screen Recording → enable **Python**
+- **Orange permission card** → System Settings → Privacy & Security → Screen & System
+  Audio Recording → enable **Rewisp Backend** (that's Rewisp's background helper).
+  macOS only applies the grant when the process restarts, so the card can stay orange
+  for a few seconds — Rewisp restarts the helper for you. Still stuck? Click
+  **Already granted** on the card, or `launchctl kickstart -k gui/$(id -u)/com.rewisp.daemon`.
+- **"Could not connect to the server"** → the background helper isn't running. Click
+  **Finish setup** in the search panel; it re-provisions the launchd agents. This is
+  self-healing since v0.12 (the app carries its own Python), so it should be rare.
 - **Ask says "sign in to Claude Code"** → run `claude` in a terminal, sign in
 - **Answers feel stale/wrong** → check the cited source timestamps; Rewisp only
   answers from what it saw — "not found in your memory" means it truly wasn't on screen

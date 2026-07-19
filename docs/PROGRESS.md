@@ -1,7 +1,7 @@
 # Rewisp — Build Progress
 
-**Current status (v0.8.0, 2026-07-14):** Phases 0–5 shipped + the "intelligent memory" cycle. In daily use (~180+ wisps/day, 3800+ wisps, ~500 episodes). v0.8 adds seven reasoning features (semantic search, delta, promises, numbers, precognition, dream/reinforcement, proactive-recall nudges) plus the first pytest suite (79 tests) and a Safari autofill fix. 10 releases (v0.1.0 → v0.8.0).
-**Next up:** custom "Rewisp AI model" training (~week-long); MCP connector to expose Rewisp memory to external agents (both in `todo.md`, not started). Re-adding a bundled offline/unlimited local model is an open option.
+**Current status (v0.12.0, 2026-07-19):** Phases 0–5 shipped, plus the "intelligent memory" cycle, the Forgetting Model, the MCP connector, and — as of v0.12 — a genuinely installable app. In daily use (~180+ wisps/day, 11,000+ wisps). 143 tests. 15 releases (v0.1.0 → v0.12.0).
+**Next up:** Personas (auto-select the autofill profile from app/site context — researched, in `todo.md`). Also queued: the capture-loop autorelease leak, a LICENSE file, an uninstaller, and auth on the MCP server.
 
 > The v1 build plan (Phases 0–5) is preserved below as the permanent timeline.
 > Everything shipped after v0.1.0 is logged in the "Post-v0.1 releases" section
@@ -169,6 +169,43 @@ Dia (Chromium-based) fully supports Chrome-style AppleScript (`URL of active tab
 10. **GitHub Pages CDN caches assets ~10 min** — a browser cache-reset refetches from the edge, not origin, so a fixed CSS/JS still looked broken. Version the asset URLs (`styles.css?v=…`) to force a fresh fetch.
 
 ---
+
+## v0.12.0 — it installs itself (2026-07-19)
+
+The distribution release. A friend downloaded v0.11, asked a question, and got
+"Could not connect to the server" — because the daemon never started, because a
+stock Mac has no usable `python3`. Everything here follows from that.
+
+- **Bundled Python runtime** — the app ships its own relocatable CPython 3.13.14
+  (`Contents/Resources/python`) with pyobjc, numpy and model2vec already installed.
+  Zero system dependencies. `scripts/bundle_python.sh` builds it; trimming tests,
+  idlelib, tkinter and `__pycache__` keeps the DMG at 56 MB.
+- **Self-provisioning on first launch** — `ui/Sources/Setup.swift` writes both
+  launchd plists and bootstraps them the moment the app opens. No installer, no
+  Terminal, nothing to run. Torn-down machine to daemon-up measured at ~3 s.
+- **The helper is named "Rewisp Backend"** — the runtime binary is copied under
+  that name, so the Screen Recording prompt says "Rewisp Backend" instead of
+  "Python 3.13". People were denying a permission they couldn't identify.
+- **Permission handling that actually clears** — macOS only applies a new Screen
+  Recording grant on *process restart*, so the card used to stay orange after you
+  granted it. The app now watches for the grant and kickstarts the daemon itself.
+- **A normal-looking DMG** — branded background, app icon, arrow, Applications
+  shortcut, toolbar hidden. `Install Rewisp.command` is gone (it contradicted the
+  install page); `install.sh` still ships inside the bundle as the "Finish setup"
+  fallback.
+- **`site/install.html`** — a four-step illustrated walkthrough (CSS-drawn macOS
+  dialogs) that the Download button opens, covering the Gatekeeper block and the
+  permission prompt.
+- **`scripts/fresh-test.sh`** — `backup` / `restore` / `status`, for rehearsing the
+  real download-and-install path without losing live data.
+
+Two packaging bugs found the hard way, both worth remembering:
+1. `ui/build.sh` wiped `/Applications/Rewisp.app` on every rebuild, taking the
+   bundled runtime and daemon with it. It now stashes and restores them.
+2. DMG window layout needs the volume attached *without* `-nobrowse` (Finder
+   can't script a hidden volume), and the background must be set with
+   `POSIX file "$MP/.background/bg.png"` — the usual `file "Volume:.background:bg.png"`
+   form throws `-10006`.
 
 ## v0.11.0 — connect your agents (2026-07-19)
 
