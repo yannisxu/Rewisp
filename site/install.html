@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installing Rewisp — 4 quick steps</title>
+<meta name="description" content="How to install Rewisp on your Mac, including the one-time macOS security prompt.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23181c2c'/%3E%3Cpath d='M 1.44 14.80 L 3.55 18.13 L 5.66 18.48 L 7.78 15.93 L 9.89 11.86 L 12.00 8.23 L 14.11 6.60 L 16.22 7.52 L 18.34 10.30 L 20.45 13.52 L 22.56 15.70' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/styles.css?v=20260719g">
+<link rel="stylesheet" href="css/install.css?v=20260719g">
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-inner">
+    <a class="brand" href="index.html">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <rect width="24" height="24" rx="6" fill="#181c2c"/>
+        <path d="M 1.44 14.80 L 3.55 18.13 L 5.66 18.48 L 7.78 15.93 L 9.89 11.86 L 12.00 8.23 L 14.11 6.60 L 16.22 7.52 L 18.34 10.30 L 20.45 13.52 L 22.56 15.70" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+      </svg>
+      Rewisp
+    </a>
+    <div class="nav-links"><a href="index.html">← Back to Rewisp</a></div>
+    <a class="btn small" id="dl-again" href="https://github.com/yashmitb/Rewisp/releases/latest/download/Rewisp.dmg">Download again</a>
+  </div>
+</nav>
+
+<header class="inst-head">
+  <div class="wrap">
+    <div class="pill"><span class="dot"></span> <span id="dl-status">Your download is starting…</span></div>
+    <h1>Four steps.<br><span class="soft">Two minutes.</span></h1>
+    <p class="sub">Rewisp isn't in the App Store, so macOS asks once whether you trust it. Here's exactly what you'll see.</p>
+  </div>
+</header>
+
+<section class="steps-wrap">
+  <div class="wrap">
+
+    <!-- STEP 1 -->
+    <div class="step-row reveal">
+      <div class="step-text">
+        <div class="step-n">1</div>
+        <h2>Open the download, drag Rewisp across</h2>
+        <p>Double-click <b>Rewisp.dmg</b> in your Downloads. A window opens with the app and an Applications shortcut. Drag one onto the other.</p>
+      </div>
+      <div class="step-vis">
+        <div class="mac-win">
+          <div class="mac-bar"><i class="r"></i><i class="y"></i><i class="g"></i><span>Rewisp</span></div>
+          <div class="dmg-body">
+            <div class="dmg-icon app" id="dragApp">
+              <div class="app-tile">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#181c2c"/><path d="M 2 15 L 5 18 L 8 16 L 11 10 L 14 7 L 17 9 L 20 14 L 22 16" stroke="#8ea2ff" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+              </div>
+              <span>Rewisp</span>
+            </div>
+            <div class="drag-arrow">→</div>
+            <div class="dmg-icon">
+              <div class="app-tile folder">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#5b8dd9"/></svg>
+              </div>
+              <span>Applications</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step-row reveal">
+      <div class="step-text">
+        <div class="step-n">2</div>
+        <h2>Right-click Rewisp, choose Open</h2>
+        <p>In your Applications folder, <b>right-click</b> (or Control-click) Rewisp and pick <b>Open</b>.</p>
+        <p class="warn">Don't double-click the first time. macOS blocks it. Right-click → Open is what gives you the "open anyway" choice.</p>
+      </div>
+      <div class="step-vis">
+        <div class="ctx-scene">
+          <div class="ctx-app">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#181c2c"/><path d="M 2 15 L 5 18 L 8 16 L 11 10 L 14 7 L 17 9 L 20 14 L 22 16" stroke="#8ea2ff" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            <span>Rewisp</span>
+          </div>
+          <div class="ctx-menu">
+            <div class="ctx-item hot">Open</div>
+            <div class="ctx-item">Show Package Contents</div>
+            <div class="ctx-sep"></div>
+            <div class="ctx-item">Move to Trash</div>
+            <div class="ctx-item">Get Info</div>
+          </div>
+          <div class="cursor-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step-row reveal">
+      <div class="step-text">
+        <div class="step-n">3</div>
+        <h2>Click Open in the warning</h2>
+        <p>macOS says it can't verify the developer. That's expected: Rewisp is open source and not notarized yet. Click <b>Open</b>.</p>
+        <p class="muted">You only do this once. After that it launches normally.</p>
+      </div>
+      <div class="step-vis">
+        <div class="gk-dialog">
+          <div class="gk-icon">?</div>
+          <div class="gk-title">“Rewisp” can’t be opened because Apple cannot check it for malicious software.</div>
+          <div class="gk-body">This software needs to be updated. Contact the developer for more information.</div>
+          <div class="gk-btns">
+            <button class="gk-btn">Move to Trash</button>
+            <button class="gk-btn">Cancel</button>
+            <button class="gk-btn primary">Open</button>
+          </div>
+        </div>
+        <div class="gk-note">Don't see an <b>Open</b> button? Go to <b>System Settings → Privacy &amp; Security</b>, scroll down, and click <b>Open Anyway</b>.</div>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step-row reveal">
+      <div class="step-text">
+        <div class="step-n">4</div>
+        <h2>Run the installer, then allow Screen Recording</h2>
+        <p>Back in the Rewisp.dmg window, double-click <b>Install Rewisp.command</b>. It sets up the background helper that does the remembering. (Right-click → Open if it complains too.)</p>
+        <p>Then macOS asks for <b>Screen Recording</b>. Rewisp needs it to read text off your screen. Turn it on for <b>Python</b> and you're done.</p>
+      </div>
+      <div class="step-vis">
+        <div class="term">
+          <div class="mac-bar"><i class="r"></i><i class="y"></i><i class="g"></i><span>Install Rewisp</span></div>
+          <div class="term-body">
+            <div>── Rewisp installer ──</div>
+            <div class="ok">✓ python3 + pyobjc</div>
+            <div class="ok">✓ semantic search ready</div>
+            <div class="ok">✓ installed /Applications/Rewisp.app</div>
+            <div class="ok">✓ launchd agents loaded</div>
+            <div class="blink">Done. Rewisp will ask for Screen Recording…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="done-cta">
+  <div class="wrap">
+    <h2>That's it.</h2>
+    <p class="lead" style="margin-inline:auto">Look for the wisp in your menu bar. Press <kbd>⌘⇧Space</kbd> anywhere to ask your memory something.</p>
+    <div class="cta-row">
+      <a class="btn" href="index.html">Back to Rewisp</a>
+      <a class="btn ghost" href="https://github.com/yashmitb/Rewisp/issues">Something broke?</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <span>© 2026 Yashmit Bhaverisetti</span>
+    <span><a href="https://github.com/yashmitb/Rewisp">GitHub</a></span>
+  </div>
+</footer>
+
+<script>
+  // Kick off the actual download, then confirm it in the pill.
+  (function () {
+    var url = document.getElementById("dl-again").href;
+    var f = document.createElement("iframe");
+    f.style.display = "none"; f.src = url;
+    document.body.appendChild(f);
+    setTimeout(function () {
+      document.getElementById("dl-status").textContent = "Download started — check your Downloads folder";
+    }, 1200);
+  })();
+  // reveal on scroll
+  var obs = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); obs.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  document.querySelectorAll(".reveal").forEach(function (el) { obs.observe(el); });
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+/* Install walkthrough — macOS UI drawn in CSS (no screenshots to go stale). */
+
+.inst-head { padding: 90px 0 40px; text-align: center; position: relative; }
+.inst-head h1 { font-size: clamp(36px, 6vw, 60px); }
+.steps-wrap { padding: 30px 0 60px; }
+
+.step-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+  padding: 40px 0; border-top: 1px solid var(--line);
+}
+.step-row:first-child { border-top: 0; }
+@media (max-width: 860px) { .step-row { grid-template-columns: 1fr; gap: 26px; } }
+
+.step-n {
+  width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center;
+  background: rgba(142,162,255,.14); border: 1px solid rgba(142,162,255,.4);
+  color: var(--accent); font-weight: 700; margin-bottom: 14px;
+}
+.step-text h2 { font-size: clamp(21px, 2.6vw, 27px); margin: 0 0 10px; }
+.step-text p { color: var(--muted); font-size: 15.5px; margin-bottom: 10px; }
+.step-text p.warn {
+  color: #f3c98b; background: rgba(243,201,139,.08);
+  border-left: 2px solid rgba(243,201,139,.5); padding: 10px 14px; border-radius: 0 8px 8px 0;
+  font-size: 14.5px;
+}
+.step-text p.muted { color: var(--dim); font-size: 14px; }
+.step-vis { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+/* generic mac window chrome */
+.mac-win, .term {
+  width: 100%; max-width: 400px; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--line-2); background: var(--card-2);
+  box-shadow: 0 24px 50px rgba(0,0,0,.5);
+}
+.mac-bar {
+  display: flex; align-items: center; gap: 7px; padding: 10px 12px;
+  background: rgba(255,255,255,.05); border-bottom: 1px solid var(--line);
+}
+.mac-bar i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+.mac-bar .r { background: #ff5f57; } .mac-bar .y { background: #febc2e; } .mac-bar .g { background: #28c840; }
+.mac-bar span { margin-left: 8px; font-size: 12.5px; color: var(--muted); }
+
+/* step 1 — drag to Applications */
+.dmg-body { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 34px 20px; }
+.dmg-icon { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.app-tile {
+  width: 62px; height: 62px; border-radius: 14px; display: grid; place-items: center;
+  background: rgba(255,255,255,.05); border: 1px solid var(--line);
+}
+.app-tile.folder { background: rgba(91,141,217,.12); border-color: rgba(91,141,217,.3); }
+.dmg-icon.app { animation: nudgeRight 2.4s var(--ease) infinite; }
+@keyframes nudgeRight { 0%,70%,100% { transform: none; } 35% { transform: translateX(14px); } }
+.drag-arrow { color: var(--accent); font-size: 22px; opacity: .8; }
+
+/* step 2 — right-click context menu */
+.ctx-scene { position: relative; width: 100%; max-width: 400px; min-height: 210px; padding: 18px; }
+.ctx-app { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text); }
+.ctx-menu {
+  margin: 12px 0 0 26px; width: 232px; border-radius: 9px; overflow: hidden;
+  background: rgba(38,40,52,.97); border: 1px solid var(--line-2);
+  box-shadow: 0 20px 44px rgba(0,0,0,.55); padding: 5px;
+  animation: menuPop .5s var(--ease) .3s both;
+}
+@keyframes menuPop { from { opacity: 0; transform: scale(.94) translateY(-6px); } to { opacity: 1; transform: none; } }
+.ctx-item { padding: 6px 10px; font-size: 13px; color: var(--muted); border-radius: 5px; }
+.ctx-item.hot { background: var(--accent); color: #0b0d16; font-weight: 600; }
+.ctx-sep { height: 1px; background: var(--line); margin: 5px 8px; }
+.cursor-dot {
+  position: absolute; left: 46px; top: 74px; width: 12px; height: 12px;
+  border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.18);
+  animation: clickPulse 2.4s ease-in-out infinite;
+}
+@keyframes clickPulse { 0%,100% { transform: scale(1); opacity: .9; } 20% { transform: scale(.7); opacity: 1; } }
+
+/* step 3 — Gatekeeper dialog */
+.gk-dialog {
+  width: 100%; max-width: 380px; border-radius: 14px; padding: 22px 20px 16px;
+  background: rgba(46,48,58,.98); border: 1px solid var(--line-2); text-align: center;
+  box-shadow: 0 26px 56px rgba(0,0,0,.6);
+}
+.gk-icon {
+  width: 52px; height: 52px; border-radius: 12px; margin: 0 auto 14px; display: grid; place-items: center;
+  background: linear-gradient(180deg,#5b5f70,#3d4150); color: #fff; font-size: 26px; font-weight: 700;
+  border: 1px solid rgba(255,255,255,.14);
+}
+.gk-title { font-size: 13.5px; font-weight: 600; line-height: 1.45; color: #fff; margin-bottom: 8px; }
+.gk-body { font-size: 12.5px; color: var(--muted); margin-bottom: 18px; }
+.gk-btns { display: flex; gap: 8px; justify-content: center; }
+.gk-btn {
+  flex: 1; padding: 7px 10px; font-size: 12.5px; border-radius: 7px; cursor: default;
+  background: rgba(255,255,255,.09); color: var(--text); border: 1px solid var(--line-2);
+}
+.gk-btn.primary {
+  background: var(--accent); color: #0b0d16; font-weight: 700; border-color: transparent;
+  animation: gkGlow 2s ease-in-out infinite;
+}
+@keyframes gkGlow {
+  0%,100% { box-shadow: 0 0 0 0 rgba(142,162,255,.6); }
+  50% { box-shadow: 0 0 0 8px rgba(142,162,255,0); }
+}
+.gk-note {
+  max-width: 380px; font-size: 13px; color: var(--muted); text-align: center;
+  background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px;
+}
+.gk-note b { color: var(--text); }
+
+/* step 4 — installer terminal */
+.term-body { padding: 16px 18px; font-family: ui-monospace, "SF Mono", monospace; font-size: 12.5px; color: var(--muted); line-height: 1.85; }
+.term-body .ok { color: var(--green); }
+.term-body .blink { color: var(--text); margin-top: 6px; }
+.term-body .blink::after { content: "▋"; color: var(--accent); animation: cur 1s steps(2) infinite; }
+@keyframes cur { 50% { opacity: 0; } }
+
+.done-cta { text-align: center; padding: 70px 0 90px; border-top: 1px solid var(--line); }
