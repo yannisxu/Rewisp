@@ -208,6 +208,8 @@ struct SearchPanelView: View {
     @State private var writeResult: String?
     @State private var needsSetup = false
     @State private var needsPermission = false
+    @State private var fixingSetup = false
+    @State private var setupFixFailed = false
     @ObservedObject private var pin = PanelPin.shared
     @State private var suggestions: [String] = []
     @AppStorage("rewisp.formassist") private var formAssist = true
@@ -451,16 +453,39 @@ struct SearchPanelView: View {
                 // First-run: the background helper was never installed. Offer the
                 // one click that fixes it instead of making them hunt for a file.
                 if needsSetup {
+                    // Set it up right here rather than opening a Terminal and
+                    // dismissing: everything needed is inside the bundle, and the
+                    // old version popped a Terminal window with no explanation.
                     Button {
-                        Setup.runInstaller()
-                        dismiss()
+                        fixingSetup = true
+                        setupFixFailed = false
+                        Task {
+                            Setup.provisionDaemon()
+                            let ok = await Setup.waitForDaemon(timeout: 30)
+                            await MainActor.run {
+                                fixingSetup = false
+                                setupFixFailed = !ok
+                                if ok {
+                                    needsSetup = false
+                                    StatusModel.shared.refresh()
+                                }
+                            }
+                        }
                     } label: {
-                        Label("Finish setup", systemImage: "bolt.badge.checkmark")
+                        Label(fixingSetup ? "Starting Rewisp…" : "Finish setup",
+                              systemImage: "bolt.badge.checkmark")
                             .font(.callout.weight(.semibold))
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
+                    .disabled(fixingSetup)
                     .padding(.top, 2)
+
+                    if setupFixFailed {
+                        Text("Couldn't start it. Open Rewisp from your Applications folder and try again.")
+                            .font(.caption).foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
 
                 HStack(spacing: 8) {

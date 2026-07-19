@@ -1,6 +1,6 @@
 # Rewisp — Build Progress
 
-**Current status (v0.12.2, 2026-07-19):** Phases 0–5 shipped, plus the "intelligent memory" cycle, the Forgetting Model, the MCP connector, and — as of v0.12 — a genuinely installable app. In daily use (~180+ wisps/day, 11,000+ wisps). 143 tests. 17 releases (v0.1.0 → v0.12.2).
+**Current status (v0.13.0, 2026-07-19):** Phases 0–5 shipped, plus the "intelligent memory" cycle, the Forgetting Model, the MCP connector, and — as of v0.12 — a genuinely installable app. In daily use (~180+ wisps/day, 11,000+ wisps). 143 tests. 18 releases (v0.1.0 → v0.13.0).
 **Next up:** Personas (auto-select the autofill profile from app/site context — researched, in `todo.md`). Also queued: the capture-loop autorelease leak, a LICENSE file, an uninstaller, and auth on the MCP server.
 
 > The v1 build plan (Phases 0–5) is preserved below as the permanent timeline.
@@ -169,6 +169,41 @@ Dia (Chromium-based) fully supports Chrome-style AppleScript (`URL of active tab
 10. **GitHub Pages CDN caches assets ~10 min** — a browser cache-reset refetches from the edge, not origin, so a fixed CSS/JS still looked broken. Version the asset URLs (`styles.css?v=…`) to force a fresh fetch.
 
 ---
+
+## v0.13.0 — the install actually holds together (2026-07-19)
+
+A pass over the whole path a stranger walks: download, drag, open, onboard. Every
+item here was reproduced on a torn-down machine, not guessed at.
+
+- **Refuses to run from the disk image.** This was the big one. Rewisp writes
+  launchd plists containing the absolute path to its bundled Python, so opening
+  the copy *inside* the DMG wrote `/Volumes/Rewisp 4/…` — a mount point that dies
+  on eject and never returns. The helper was then dead for good, and because macOS
+  ties Screen Recording grants to a binary path, the permission they had already
+  granted did not carry to the copy they later dragged over. `InstallLocation`
+  now catches this (plus Gatekeeper's read-only translocation mount), offers to
+  move the app to /Applications, de-quarantines it, and reopens from there.
+- **Moving the app repairs itself.** `ensureDaemonRunning` compares the installed
+  agent's path against this bundle instead of only asking "is something answering?"
+  A helper left over from the DMG looks perfectly healthy until the eject, so
+  health alone was never enough. Verified by sabotaging a plist to a dead
+  `/Volumes` path and relaunching: repointed, HTTP 200.
+- **Onboarding no longer eats your answers.** The Vault page and the browser
+  picker posted to the helper while it was still starting, so a first-run user
+  typed their name, saw a green "Saved to Vault", and had it silently dropped.
+  Both now wait for the helper and report honestly if it truly failed.
+- **No Terminal, anywhere.** Onboarding's setup button and the search panel's
+  "Finish setup" still shelled out to `install.sh` in a Terminal window — the exact
+  thing v0.12 existed to delete. Both provision in-process now, with progress and a
+  real error if it fails. The dead `runInstaller` path is gone so it cannot return.
+- **The menu bar stopped giving shell advice.** When the helper was down it said
+  "Start it with: python3 -m rewisp daemon", a command that does not work on a
+  stock Mac and names software we stopped depending on. It is a **Start Rewisp**
+  button now.
+- **Granting permission finishes the job.** The onboarding permission row arms the
+  restart watcher, so the row turns green on its own — macOS only applies a Screen
+  Recording grant on process restart, which is why "I gave permission and nothing
+  happened" was the most common first-run complaint.
 
 ## v0.12.2 — the first-launch token race (2026-07-19)
 

@@ -13,6 +13,8 @@ struct DashboardView: View {
     @State private var recap: RewispAPI.Recap?
     @State private var threads: RewispAPI.Threads?
     @State private var daemonUp = true
+    @State private var restartingDaemon = false
+    @State private var restartFailed = false
     @FocusState private var searchFocused: Bool
 
     private let spring = Animation.spring(response: 0.35, dampingFraction: 0.8)
@@ -262,19 +264,55 @@ struct DashboardView: View {
         .padding(.vertical, 20)
     }
 
+    // Never tell a normal person to run a shell command. Since v0.12 the app
+    // carries its own runtime, so the fix is one button — and "python3 -m rewisp
+    // daemon", which this used to print, doesn't even exist on a stock Mac.
     private var daemonDownCard: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             Image(systemName: "moon.zzz")
                 .font(.title2)
                 .foregroundStyle(.secondary)
-            Text("Rewisp daemon isn't running")
+            Text("Rewisp isn't remembering")
                 .font(.callout.weight(.medium))
-            Text("Start it with:  python3 -m rewisp daemon")
-                .font(.caption.monospaced())
+            Text("Its background helper stopped. Starting it again takes a second.")
+                .font(.caption)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                restartingDaemon = true
+                restartFailed = false
+                Task {
+                    Setup.provisionDaemon()
+                    let ok = await Setup.waitForDaemon(timeout: 30)
+                    await MainActor.run {
+                        restartingDaemon = false
+                        restartFailed = !ok
+                        StatusModel.shared.refresh()
+                    }
+                    await refresh()
+                }
+            } label: {
+                Label(restartingDaemon ? "Starting…" : "Start Rewisp",
+                      systemImage: "bolt.badge.checkmark")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .disabled(restartingDaemon)
+
+            if restartFailed {
+                Text("Still not starting. Try opening Rewisp from your Applications folder.")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
+        .padding(.vertical, 22)
+        .padding(.horizontal, 8)
     }
 
     private var footer: some View {

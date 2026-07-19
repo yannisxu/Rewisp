@@ -14,6 +14,12 @@ Download **Rewisp.dmg**, drag Rewisp into Applications, then right-click it and 
 **Open** the first time (Rewisp isn't notarized yet, so a plain double-click gets
 blocked). Grant Screen Recording to **Rewisp Backend** when macOS asks.
 
+**Drag it over before opening it.** If you open Rewisp straight from the disk image,
+it will offer to move itself to Applications and reopen — take it. Rewisp's background
+helper is launched by macOS from wherever the app sits, so a copy running off the disk
+image stops working the moment you eject, and the screen permission you granted there
+doesn't transfer.
+
 That's the whole install. There is nothing to run in Terminal and no Python to
 install — the app carries its own runtime and starts its background helper by
 itself the first time you open it. Illustrated walkthrough: `site/install.html`.

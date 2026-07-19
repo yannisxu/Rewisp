@@ -39,6 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        // Must come before anything provisions the helper: setting up launchd from
+        // a DMG or a translocated copy bakes a path that vanishes on eject.
+        if InstallLocation.enforceIfNeeded() { return }
+
         DistributedNotificationCenter.default().addObserver(
             forName: Notification.Name("com.rewisp.open.main"), object: nil, queue: .main
         ) { _ in

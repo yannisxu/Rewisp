@@ -250,7 +250,7 @@ enum HelpContent {
         .init(q: "It says “Could not connect to the server”",
               a: "Rewisp’s background helper isn’t running. Click **Finish setup** in the search panel and Rewisp will set it up again. Everything it needs is inside the app, so there’s nothing to download."),
         .init(q: "The menu bar says the daemon isn’t running",
-              a: "Click **Finish setup** in the search panel. If you’d rather do it by hand: `launchctl kickstart -k gui/$(id -u)/com.rewisp.daemon`, then reopen Rewisp from Applications."),
+              a: "Click **Start Rewisp** in the menu bar popover, or **Finish setup** in the search panel. Either one restarts the helper for you — there’s nothing to run in Terminal."),
         .init(q: "It’s not capturing anything",
               a: "Rewisp needs Screen Recording permission. Open System Settings → Privacy & Security → Screen & System Audio Recording and enable **Rewisp Backend** — that’s Rewisp’s background helper. macOS only applies the change when the helper restarts, which Rewisp does for you. Also check you’re not paused (⌘⌥P)."),
         .init(q: "Answers feel stale or wrong",

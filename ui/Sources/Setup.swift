@@ -100,10 +100,41 @@ enum Setup {
         }
     }
 
-    /// Called at launch: if the helper isn't up and we can fix it ourselves, do it.
+    static var daemonPlistURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/LaunchAgents/com.rewisp.daemon.plist")
+    }
+
+    /// True when the installed agent actually points at THIS bundle's runtime.
+    ///
+    /// It can point somewhere else in the perfectly ordinary case where the app
+    /// was first opened from the mounted DMG and then moved into /Applications:
+    /// the agent still names "/Volumes/Rewisp …", which works right up until the
+    /// disk image is ejected and then fails forever. Checking the path (instead of
+    /// just "is something answering?") is what makes moving the app self-healing.
+    static func provisionedPathIsCurrent() -> Bool {
+        guard let data = try? Data(contentsOf: daemonPlistURL),
+              let plist = try? PropertyListSerialization.propertyList(
+                  from: data, format: nil) as? [String: Any],
+              let args = plist["ProgramArguments"] as? [String],
+              let program = args.first
+        else { return false }
+        return program == bundledPython
+    }
+
+    /// Called at launch: make sure the helper is running AND is the one that
+    /// belongs to this copy of the app.
     static func ensureDaemonRunning() async {
-        if await daemonRunning() { return }
         guard selfContained else { return }        // dev build — leave it alone
+
+        // A helper answering from a stale path (old bundle location, ejected DMG)
+        // must be repointed even though it looks perfectly healthy right now.
+        if !provisionedPathIsCurrent() {
+            _ = provisionDaemon()
+            _ = await waitForDaemon(timeout: 20)
+            return
+        }
+        if await daemonRunning() { return }
         _ = provisionDaemon()
         _ = await waitForDaemon(timeout: 20)
     }
@@ -137,28 +168,10 @@ enum Setup {
                 NSURLErrorTimedOut].contains(e.code)
     }
 
-    /// Run the bundled installer in Terminal. Deliberately visible rather than
-    /// silent: it may need to install Python packages or ask for a password, and
-    /// a hidden failure is worse than a window the user can read.
-    @discardableResult
-    static func runInstaller() -> Bool {
-        guard installerAvailable else {
-            // Dev builds (swiftc, no bundled daemon) — open the repo script instead.
-            let dev = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Code/Rewisp/scripts/install.sh").path
-            guard FileManager.default.fileExists(atPath: dev) else { return false }
-            return launchInTerminal(dev)
-        }
-        return launchInTerminal(installerPath)
-    }
-
-    private static func launchInTerminal(_ path: String) -> Bool {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        p.arguments = ["-a", "Terminal", path]
-        do { try p.run() } catch { return false }
-        return true
-    }
+    // Nothing launches a Terminal any more. Setup is provisionDaemon() in-process;
+    // scripts/install.sh still ships inside the bundle for anyone who wants to run
+    // it by hand, but no UI path opens it. Popping a Terminal window at a person
+    // who just wanted to ask a question was never the right answer.
 
     /// Poll until the daemon comes up (or we give up), so the UI can show a live ✓.
     static func waitForDaemon(timeout: TimeInterval = 90) async -> Bool {

@@ -46,10 +46,13 @@ struct OnboardingView: View {
     @State private var vPhone = ""
     @State private var vAddress = ""
     @State private var vaultSaved = false
+    @State private var vaultSaving = false
+    @State private var vaultError = false
     @State private var iconGlow = false
 
     @State private var setupRunning = false
     @State private var setupFailed = false
+    @State private var permissionWatchArmed = false
     private let pages = 7
     private let browsers: [(name: String, note: String?)] = [
         ("Safari", nil), ("Google Chrome", nil), ("Arc", nil), ("Dia", nil),
@@ -164,8 +167,14 @@ struct OnboardingView: View {
                     Button {
                         preferredBrowser = b.name
                         Task { @MainActor in
-                            _ = try? await RewispAPI.post("browser-consent", body: ["app": b.name])
-                            consented.insert(b.name)
+                            // Same startup race as the Vault page — wait for the
+                            // helper rather than posting into the void, and only
+                            // show the checkmark if it actually landed.
+                            _ = await Setup.waitForDaemon(timeout: 25)
+                            if (try? await RewispAPI.post("browser-consent",
+                                                          body: ["app": b.name])) != nil {
+                                withAnimation(.spring) { _ = consented.insert(b.name) }
+                            }
                         }
                     } label: {
                         HStack(spacing: 8) {
@@ -267,14 +276,22 @@ struct OnboardingView: View {
                 Button {
                     saveVault()
                 } label: {
-                    Label(vaultSaved ? "Saved to Vault" : "Save to Vault",
+                    Label(vaultSaving ? "Saving…" : (vaultSaved ? "Saved to Vault" : "Save to Vault"),
                           systemImage: vaultSaved ? "checkmark.seal.fill" : "lock.rectangle.stack")
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(vaultSaved ? .green : nil)
-                .disabled(vName.isEmpty && vEmail.isEmpty && vPhone.isEmpty && vAddress.isEmpty)
+                .disabled(vaultSaving
+                          || (vName.isEmpty && vEmail.isEmpty && vPhone.isEmpty && vAddress.isEmpty))
+                if vaultSaving { ProgressView().controlSize(.small) }
                 Text("Optional — you can add or edit this anytime in the Vault tab.")
                     .font(.caption).foregroundStyle(.tertiary)
+            }
+            if vaultError {
+                Label("Couldn't save yet — the background helper is still starting. Try again in a moment, or add this later in the Vault tab.",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.bottom, 8)
@@ -298,9 +315,20 @@ struct OnboardingView: View {
         if !vAddress.isEmpty { lines.append("Address: \(vAddress)") }
         guard !lines.isEmpty else { return }
         let text = lines.joined(separator: "\n")
+        vaultSaving = true
+        vaultError = false
         Task { @MainActor in
-            _ = try? await RewispAPI.post("vault/note", body: ["title": "My info", "text": text])
-            withAnimation(.spring) { vaultSaved = true }
+            // The helper is still starting during the first seconds of onboarding,
+            // and this page is reachable well before it answers. Posting blind used
+            // to drop the note on the floor while still showing "Saved to Vault".
+            _ = await Setup.waitForDaemon(timeout: 25)
+            let ok = (try? await RewispAPI.post("vault/note",
+                                                body: ["title": "My info", "text": text])) != nil
+            vaultSaving = false
+            withAnimation(.spring) {
+                vaultSaved = ok
+                vaultError = !ok
+            }
         }
     }
 
@@ -322,15 +350,20 @@ struct OnboardingView: View {
                     detail: status.daemonUp
                         ? "All set — Rewisp is remembering."
                         : "Not started yet. One click sets it up.",
-                    anchor: nil)
+                    anchor: nil, onOpen: nil)
 
                 if !status.daemonUp {
                     HStack(spacing: 10) {
                         Button {
                             setupRunning = true
-                            Setup.runInstaller()
+                            setupFailed = false
                             Task {
-                                let ok = await Setup.waitForDaemon()
+                                // In-process, no Terminal: everything needed ships
+                                // in the bundle and user-level launchd agents need
+                                // no password. Opening a Terminal here contradicted
+                                // the whole point of the bundled runtime.
+                                Setup.provisionDaemon()
+                                let ok = await Setup.waitForDaemon(timeout: 30)
                                 await MainActor.run {
                                     setupRunning = false
                                     setupFailed = !ok
@@ -338,21 +371,18 @@ struct OnboardingView: View {
                                 }
                             }
                         } label: {
-                            Label(setupRunning ? "Setting up…" : "Finish setup",
+                            Label(setupRunning ? "Setting up…" : "Set it up",
                                   systemImage: "bolt.badge.checkmark")
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(setupRunning)
 
-                        if setupRunning {
-                            ProgressView().controlSize(.small)
-                            Text("A Terminal window will show progress.")
-                                .font(.caption).foregroundStyle(.tertiary)
-                        }
+                        if setupRunning { ProgressView().controlSize(.small) }
                     }
                     if setupFailed {
-                        Text("Setup didn't finish. Check the Terminal window for the error, then try again.")
+                        Text("Setup didn't finish. Reopen Rewisp from your Applications folder and try again — if it keeps failing, use Help → Report a bug.")
                             .font(.caption).foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -360,16 +390,20 @@ struct OnboardingView: View {
             permissionRow(
                 ok: status.status?.screen_permission == true,
                 title: "Screen & System Audio Recording",
-                detail: "Lets Rewisp see the screen to remember it. Grant it to “Rewisp Backend”.",
-                anchor: "Privacy_ScreenCapture")
+                detail: "Lets Rewisp see the screen to remember it. In the list that opens, turn on “Rewisp Backend”.",
+                anchor: "Privacy_ScreenCapture",
+                onOpen: armPermissionWatch)
 
             permissionRow(
                 ok: nil,
                 title: "Accessibility (optional)",
-                detail: "Only needed for the ⌘⌥P pause hotkey.",
-                anchor: "Privacy_Accessibility")
+                detail: "Only needed for the ⌘⌥P pause hotkey. Skip it if you like.",
+                anchor: "Privacy_Accessibility",
+                onOpen: nil)
 
-            Text("Status refreshes automatically — grant, then come back.")
+            Text(permissionWatchArmed && status.status?.screen_permission != true
+                 ? "Waiting for the permission… this page updates by itself, no need to reopen anything."
+                 : "Status refreshes automatically — grant, then come back.")
                 .font(.caption).foregroundStyle(.tertiary)
             Spacer()
         }
@@ -413,7 +447,20 @@ struct OnboardingView: View {
         }
     }
 
-    private func permissionRow(ok: Bool?, title: String, detail: String, anchor: String?) -> some View {
+    /// macOS applies a new Screen Recording grant only when the process restarts,
+    /// so without this the row sits grey after the user has already said yes —
+    /// the single most common "I gave permission and nothing happened" moment.
+    private func armPermissionWatch() {
+        guard !permissionWatchArmed else { return }
+        permissionWatchArmed = true
+        Task {
+            await Setup.restartWhenPermissionGranted()
+            await MainActor.run { StatusModel.shared.refresh() }
+        }
+    }
+
+    private func permissionRow(ok: Bool?, title: String, detail: String,
+                               anchor: String?, onOpen: (() -> Void)?) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: ok == true ? "checkmark.circle.fill"
                                          : (ok == false ? "circle" : "questionmark.circle"))
@@ -430,6 +477,7 @@ struct OnboardingView: View {
                 Button("Open Settings") {
                     NSWorkspace.shared.open(URL(string:
                         "x-apple.systempreferences:com.apple.preference.security?\(anchor)")!)
+                    onOpen?()
                 }
                 .controlSize(.small)
             }
