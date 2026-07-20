@@ -32,7 +32,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key><string>com.yashmit.rewisp</string>
     <key>CFBundleExecutable</key><string>Rewisp</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.14.0</string>
+    <key>CFBundleShortVersionString</key><string>0.14.1</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
@@ -63,6 +63,17 @@ if [[ "$1" == "--install" || -d /Applications/Rewisp.app ]]; then
             mv "$STASH/$keep" "/Applications/Rewisp.app/Contents/Resources/$keep"
     done
     rm -rf "$STASH"
+    # Refresh the daemon source from the repo. Restoring the stash alone kept an
+    # OLD rewisp/ alive across rebuilds: the Swift app reported the new version
+    # while the Python helper beside it was stale, so daemon-side fixes silently
+    # never shipped to the running helper. Costs nothing; catches everything.
+    DEST="/Applications/Rewisp.app/Contents/Resources/daemon"
+    if [[ -d "$DEST" ]]; then
+        rm -rf "$DEST/rewisp"
+        cp -R "$(dirname "$0")/../rewisp" "$DEST/rewisp"
+        find "$DEST" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+        codesign --force --deep --sign - /Applications/Rewisp.app 2>/dev/null || true
+    fi
     open /Applications/Rewisp.app
     echo "installed + relaunched /Applications/Rewisp.app"
 fi

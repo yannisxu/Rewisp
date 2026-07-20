@@ -15,6 +15,7 @@ struct DashboardView: View {
     @State private var daemonUp = true
     @State private var restartingDaemon = false
     @State private var restartFailed = false
+    @State private var requestingPermission = false
     @FocusState private var searchFocused: Bool
 
     private let spring = Animation.spring(response: 0.35, dampingFraction: 0.8)
@@ -227,41 +228,77 @@ struct DashboardView: View {
         }
     }
 
+    // Mirrors the onboarding permission page. macOS applies a Screen Recording
+    // grant only to a freshly started process, so this card has to distinguish
+    // "not granted" from "granted, helper restarting" — reporting only the former
+    // is what made Rewisp insist permission was missing after it had been given.
     private var permissionCard: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "eye.trianglebadge.exclamationmark")
+        let pending = status?.permission_pending == true
+        return VStack(spacing: 11) {
+            Image(systemName: pending ? "arrow.triangle.2.circlepath"
+                                      : "eye.trianglebadge.exclamationmark")
                 .font(.title2)
-                .foregroundStyle(.orange)
+                .foregroundStyle(pending ? AnyShapeStyle(Theme.accent) : AnyShapeStyle(.orange))
                 .symbolRenderingMode(.hierarchical)
-            Text("Screen Recording permission needed")
+                .symbolEffect(.pulse, isActive: pending)
+
+            Text(pending ? "Applying your permission…" : "Rewisp needs to see your screen")
                 .font(.callout.weight(.medium))
-            Text("System Settings → Privacy & Security →\nScreen & System Audio Recording → enable **Rewisp Backend**")
+                .multilineTextAlignment(.center)
+
+            Text(pending
+                 ? "Restarting the helper so macOS applies it. A few seconds."
+                 : "It reads text off the screen and forgets the image immediately. Nothing leaves this Mac.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            // Upgrade note: before v0.12 the helper ran on the system Python, so
-            // an old "Python" entry may still be listed — it no longer applies.
-            Text("Upgrading? The old **Python** entry is stale — grant Rewisp Backend instead.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-            HStack(spacing: 8) {
-                Button("Open System Settings") {
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !pending {
+                Button {
+                    requestingPermission = true
+                    Task { @MainActor in
+                        _ = try? await RewispAPI.post("request-permission")
+                        await Setup.restartWhenPermissionGranted()
+                        requestingPermission = false
+                        StatusModel.shared.refresh()
+                        await refresh()
+                    }
+                } label: {
+                    Label(requestingPermission ? "Waiting for you…" : "Allow screen access",
+                          systemImage: "lock.open")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(requestingPermission)
+
+                Button("Do it in System Settings") {
                     NSWorkspace.shared.open(URL(string:
                         "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
-                    // A grant only takes effect on restart — watch for it and
-                    // restart the helper automatically so this card clears itself.
-                    Task { await Setup.restartWhenPermissionGranted(); StatusModel.shared.refresh() }
+                    Task {
+                        await Setup.restartWhenPermissionGranted()
+                        StatusModel.shared.refresh()
+                        await refresh()
+                    }
                 }
-                Button("Already granted") {
-                    Setup.restartDaemon()
-                    Task { try? await Task.sleep(for: .seconds(4)); StatusModel.shared.refresh() }
-                }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                // Pre-v0.12 the helper ran on the system Python, so an old
+                // "Python" row may still be listed. It no longer does anything.
+                Text("Switch on **Rewisp Backend**. An older **Python** entry, if you see one, is stale.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .controlSize(.small)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
+        .padding(.vertical, 18)
+        .padding(.horizontal, 6)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: pending)
     }
 
     // Never tell a normal person to run a shell command. Since v0.12 the app
