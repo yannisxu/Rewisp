@@ -13,8 +13,27 @@ enum Setup {
         Bundle.main.bundlePath + "/Contents/Resources/daemon/install.sh"
     }
 
+    /// The helper executable, inside its own .app bundle.
+    ///
+    /// It lives in a bundle purely so macOS has a stable code identity to hang the
+    /// Screen Recording grant on. As a loose binary it signed as `Identifier=-`,
+    /// and the permission could be switched on without ever taking effect.
     static var bundledPython: String {
-        Bundle.main.bundlePath + "/Contents/Resources/python/bin/Rewisp Backend"
+        helperApp + "/Contents/MacOS/Rewisp Backend"
+    }
+    static var helperApp: String {
+        Bundle.main.bundlePath + "/Contents/MacOS/RewispBackend.app"
+    }
+    /// The interpreter sits in the helper bundle, its stdlib does not — so it has
+    /// to be told where home is.
+    static var pythonHome: String {
+        Bundle.main.bundlePath + "/Contents/Resources/python"
+    }
+    /// Bytecode cache location, deliberately outside the app bundle — writing it
+    /// inside breaks the signature and silently revokes Screen Recording.
+    static var pycachePrefix: String {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Rewisp/.pycache").path
     }
     static var bundledDaemonDir: String {
         Bundle.main.bundlePath + "/Contents/Resources/daemon"
@@ -59,6 +78,18 @@ enum Setup {
                 <key>Label</key><string>\(job.label)</string>
                 <key>ProgramArguments</key><array>\(argXML)</array>
                 <key>WorkingDirectory</key><string>\(bundledDaemonDir)</string>
+                <key>EnvironmentVariables</key><dict>
+                    <key>PYTHONHOME</key><string>\(pythonHome)</string>
+                    <!-- Keep bytecode caches OUT of the app bundle. Python writes
+                         __pycache__ next to any module it imports, which modifies
+                         sealed Resources and invalidates Rewisp.app's code
+                         signature. macOS then stops honouring the helper's Screen
+                         Recording grant: the switch stays on, the process is
+                         denied, and capture dies minutes after it started
+                         working. Redirecting the cache keeps the bundle pristine
+                         and keeps the startup speed. -->
+                    <key>PYTHONPYCACHEPREFIX</key><string>\(pycachePrefix)</string>
+                </dict>
                 \(job.extra)
                 <key>StandardErrorPath</key><string>/tmp/\(job.label).err</string>
             </dict></plist>

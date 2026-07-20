@@ -21,7 +21,11 @@ cp -R rewisp "$RES/rewisp"
 find "$RES" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 cp scripts/install.sh "$RES/install.sh"
 chmod +x "$RES/install.sh"
-codesign --force --deep --sign - ui/Rewisp.app
+# NOT --deep: it re-signs the bundled helper and strips its identifier back to
+# "-", which destroys the Screen Recording grant (see bundle_python.sh). Sign the
+# outer bundle only; the helper already carries its own stable signature, and
+# sealing the app records it as-is.
+codesign --force --sign - ui/Rewisp.app
 
 echo "── staging ──"
 STAGE=$(mktemp -d)

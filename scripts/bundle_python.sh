@@ -15,7 +15,8 @@ cd "$(dirname "$0")/.."
 PY_VERSION="3.13.14"
 PB_TAG="20260718"
 ARCH="aarch64-apple-darwin"
-DEST="ui/Rewisp.app/Contents/Resources/python"
+APP_RES="ui/Rewisp.app/Contents/Resources"
+DEST="$APP_RES/python"
 CACHE=".cache/python-standalone"
 
 # Frameworks the daemon actually imports (Quartz, Vision, Foundation, AppKit,
@@ -68,8 +69,51 @@ find "$DEST" -name "*.pyc" -delete 2>/dev/null || true
 # Give the interpreter a human name. macOS shows the EXECUTABLE FILENAME in the
 # Screen Recording permission list, so the daemon otherwise appears as an
 # anonymous "python3.13". A copy (not a symlink — TCC reports the symlink target).
-cp "$DEST/bin/python3.13" "$DEST/bin/Rewisp Backend"
-chmod +x "$DEST/bin/Rewisp Backend"
+# ── the helper, as a real .app ────────────────────────────────────────────────
+#
+# Screen Recording is granted to a code identity, and a bare mach-O is a terrible
+# thing to hand TCC. Shipped as a loose binary the helper signed as
+# `Identifier=-`, so macOS had nothing durable to match: the switch in System
+# Settings read as ON while the running process stayed denied, extra entries piled
+# up on every reinstall, and no amount of toggling fixed it.
+#
+# Wrapping it in a bundle with a real CFBundleIdentifier gives TCC something
+# stable to record, and gives the user a properly named, icon-bearing row in the
+# permission list instead of a mystery binary. PYTHONHOME (set in the launchd
+# plist) points the interpreter back at the runtime, since the stdlib no longer
+# sits at the usual place relative to the executable.
+HELPER_APP="ui/Rewisp.app/Contents/MacOS/RewispBackend.app"
+rm -rf "$HELPER_APP"
+mkdir -p "$HELPER_APP/Contents/MacOS" "$HELPER_APP/Contents/Resources"
+cp "$DEST/bin/python3.13" "$HELPER_APP/Contents/MacOS/Rewisp Backend"
+chmod +x "$HELPER_APP/Contents/MacOS/Rewisp Backend"
+[[ -f "$APP_RES/Rewisp.icns" ]] && \
+    cp "$APP_RES/Rewisp.icns" "$HELPER_APP/Contents/Resources/"
+
+cat > "$HELPER_APP/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleName</key><string>Rewisp Backend</string>
+  <key>CFBundleDisplayName</key><string>Rewisp Backend</string>
+  <key>CFBundleExecutable</key><string>Rewisp Backend</string>
+  <key>CFBundleIdentifier</key><string>com.yashmit.rewisp.backend</string>
+  <key>CFBundleIconFile</key><string>Rewisp</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>LSUIElement</key><true/>
+</dict></plist>
+PLIST
+
+# Stable identifier, and never re-signed with --deep from above (that is what
+# reset it to "-" and silently revoked the grant on every rebuild).
+# Nothing written into the bundle after this point, or the signature dies and
+# macOS stops honouring the Screen Recording grant (Apple TN2206: adding files to
+# a signed bundle always invalidates it).
+find "$DEST" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+find "$DEST" -name "*.pyc" -delete 2>/dev/null || true
+codesign --force --sign - --identifier com.yashmit.rewisp.backend "$HELPER_APP"
+echo "✓ helper bundle: Contents/MacOS/RewispBackend.app (com.yashmit.rewisp.backend)"
 
 echo "── verifying ──"
 "$PY" - <<'EOF'

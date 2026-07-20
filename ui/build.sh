@@ -32,7 +32,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key><string>com.yashmit.rewisp</string>
     <key>CFBundleExecutable</key><string>Rewisp</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.14.1</string>
+    <key>CFBundleShortVersionString</key><string>0.15.0</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
@@ -72,7 +72,10 @@ if [[ "$1" == "--install" || -d /Applications/Rewisp.app ]]; then
         rm -rf "$DEST/rewisp"
         cp -R "$(dirname "$0")/../rewisp" "$DEST/rewisp"
         find "$DEST" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-        codesign --force --deep --sign - /Applications/Rewisp.app 2>/dev/null || true
+        # Never --deep here: it re-signs Resources/python/bin/"Rewisp Backend"
+        # and resets its identifier to "-", silently revoking the user's Screen
+        # Recording grant on every rebuild.
+        codesign --force --sign - /Applications/Rewisp.app 2>/dev/null || true
     fi
     open /Applications/Rewisp.app
     echo "installed + relaunched /Applications/Rewisp.app"

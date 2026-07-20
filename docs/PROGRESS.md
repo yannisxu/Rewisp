@@ -1,6 +1,6 @@
 # Rewisp — Build Progress
 
-**Current status (v0.14.1, 2026-07-19):** Phases 0–5 shipped, plus the "intelligent memory" cycle, the Forgetting Model, the MCP connector, and — as of v0.12 — a genuinely installable app. In daily use (~180+ wisps/day, 11,000+ wisps). 143 tests. 20 releases (v0.1.0 → v0.14.1).
+**Current status (v0.15.0, 2026-07-19):** Phases 0–5 shipped, plus the "intelligent memory" cycle, the Forgetting Model, the MCP connector, and — as of v0.12 — a genuinely installable app. In daily use (~180+ wisps/day, 11,000+ wisps). 143 tests. 21 releases (v0.1.0 → v0.15.0).
 **Next up:** Personas (auto-select the autofill profile from app/site context — researched, in `todo.md`). Also queued: the capture-loop autorelease leak, a LICENSE file, an uninstaller, and auth on the MCP server.
 
 > The v1 build plan (Phases 0–5) is preserved below as the permanent timeline.
@@ -169,6 +169,40 @@ Dia (Chromium-based) fully supports Chrome-style AppleScript (`URL of active tab
 10. **GitHub Pages CDN caches assets ~10 min** — a browser cache-reset refetches from the edge, not origin, so a fixed CSS/JS still looked broken. Version the asset URLs (`styles.css?v=…`) to force a fresh fetch.
 
 ---
+
+## v0.15.0 — the permission finally holds (2026-07-19)
+
+Reported as "it's working. Now it's not working again." Capture would run for a
+minute or two after granting Screen Recording, then silently stop, and the switch
+in System Settings stayed on the whole time. Reinstalling never helped.
+
+**Root cause: the app was destroying its own code signature at runtime.**
+The bundled interpreter writes `__pycache__/*.pyc` beside every module it imports
+— inside the app bundle. Per Apple TN2206, adding files to a signed bundle always
+invalidates it, and macOS refuses to honour a TCC grant for a process whose
+containing bundle no longer validates. So: grant, capture works, Python writes its
+caches, the seal breaks, macOS revokes, capture stops. An endless loop, and it
+would have hit every user identically.
+
+- `PYTHONPYCACHEPREFIX` now points at `~/Rewisp/.pycache`. Verified: after
+  sustained capture the bundle holds **0** `.pyc` files, `codesign --verify` still
+  passes, and the grant survives a daemon restart.
+
+**Second cause: the helper lived in the wrong directory.** It was in
+`Contents/Resources`, which Apple designates for data — executables there are
+treated as unsigned content. Apple's "Placing content in a bundle" puts helper
+tools and apps in `Contents/MacOS`. Moved.
+
+**Third cause, fixed on the way in:** the helper shipped as a bare mach-O signed
+with `Identifier=-`, because `codesign --deep` from the app above it wiped the
+identity. TCC had nothing durable to record, so the switch could be on while the
+process stayed denied, and every rebuild silently revoked the grant. The helper is
+now `RewispBackend.app` with `CFBundleIdentifier com.yashmit.rewisp.backend`,
+signed with an explicit stable identifier, and `--deep` is gone from every build
+path. Re-signing is deterministic (same cdhash), so grants persist across updates.
+
+Lesson worth keeping: if a TCC permission reads as granted but the process is
+denied, check `codesign --verify` on the containing bundle before anything else.
 
 ## v0.14.1 — the other permission card (2026-07-19)
 
