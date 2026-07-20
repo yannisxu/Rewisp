@@ -999,6 +999,7 @@ struct SettingsTab: View {
     @State private var newApp = ""
     @State private var newPattern = ""
     @State private var exportResult: String?
+    @State private var showUninstall = false
     @State private var settings: RewispAPI.Settings?
     @State private var engine = "auto"
     @State private var geminiKey = ""
@@ -1392,6 +1393,23 @@ struct SettingsTab: View {
             MemoryLayersCard()
 
             ForgettingCard()
+
+            // Uninstalling should not require hunting for instructions, and it
+            // should not be a trap either — the sheet defaults to keeping your
+            // memories and everything it removes goes to the Trash.
+            Card {
+                CardHeader(title: "Uninstall", symbol: "trash")
+                Text("Removes the background helper, the startup items, the screen permission, and Rewisp itself. You choose whether your memories go too.")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Button("Uninstall Rewisp…") { showUninstall = true }
+                    Spacer()
+                }
+            }
+        }
+        .sheet(isPresented: $showUninstall) {
+            UninstallSheet { showUninstall = false }
         }
     }
 

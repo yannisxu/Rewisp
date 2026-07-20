@@ -1,6 +1,6 @@
 # Rewisp — Build Progress
 
-**Current status (v0.15.1, 2026-07-19):** Phases 0–5 shipped, plus the "intelligent memory" cycle, the Forgetting Model, the MCP connector, and — as of v0.12 — a genuinely installable app. In daily use (~180+ wisps/day, 11,000+ wisps). 143 tests. 22 releases (v0.1.0 → v0.15.1).
+**Current status (v0.16.0, 2026-07-19):** Phases 0–5 shipped, plus the "intelligent memory" cycle, the Forgetting Model, the MCP connector, and — as of v0.12 — a genuinely installable app. In daily use (~180+ wisps/day, 11,000+ wisps). 143 tests. 23 releases (v0.1.0 → v0.16.0).
 **Next up:** Personas (auto-select the autofill profile from app/site context — researched, in `todo.md`). Also queued: the capture-loop autorelease leak, a LICENSE file, an uninstaller, and auth on the MCP server.
 
 > The v1 build plan (Phases 0–5) is preserved below as the permanent timeline.
@@ -169,6 +169,41 @@ Dia (Chromium-based) fully supports Chrome-style AppleScript (`URL of active tab
 10. **GitHub Pages CDN caches assets ~10 min** — a browser cache-reset refetches from the edge, not origin, so a fixed CSS/JS still looked broken. Version the asset URLs (`styles.css?v=…`) to force a fresh fetch.
 
 ---
+
+## v0.16.0 — uninstall from inside the app (2026-07-19)
+
+- **Settings → Your data → Uninstall.** Removes the background helper, the startup
+  items, the Screen Recording grant, your settings, and Rewisp itself. Everything
+  goes to the **Trash**, never `rm` — this can remove months of screen history, so
+  a misclick has to be recoverable.
+  - "Also delete my memories" **defaults to off**, so uninstall-then-reinstall
+    doesn't silently cost you your memory. The checkbox shows the real wisp count
+    and folder size.
+  - Order is load-bearing, and two of these were learned the hard way:
+    1. `launchctl bootout` first — the daemon runs `KeepAlive`, so deleting its
+       binary while the job is loaded makes launchd respawn it in a failure loop.
+    2. `tccutil reset` **before** trashing the bundle. tccutil resolves a bundle
+       identifier by looking the app up on disk; once it is gone it returns
+       OSStatus -10814 and the permission rows are stranded in System Settings
+       with no way to clear them.
+    3. Trash the app last. macOS allows moving a running bundle, but nothing after
+       that step can depend on files inside it.
+  - No Finder scripting, despite that being the only way to get "Put Back":
+    `NSWorkspace.recycle` cannot offer it, and the alternative triggers an
+    Automation permission prompt. Asking for a *new* permission during an
+    uninstall is the worse trade.
+
+- **`ui/build.sh` was deleting the helper on every rebuild.** Its keep-list named
+  `Resources/python` and `Resources/daemon` but not `MacOS/RewispBackend.app`, so
+  each rebuild destroyed the helper. The running daemon survived only because its
+  process held the deleted inode — the next restart would have killed it for good,
+  and macOS pruned the Screen Recording grant the moment the binary vanished.
+  Caught live on a working install. The list is now relative to `Contents/` and
+  includes the helper.
+
+- **`REWISP_NO_INSTALL=1`** — release builds no longer overwrite the installed
+  copy. `make_dmg.sh` sets it, so cutting a release stopped silently upgrading the
+  machine doing the cutting (which also made the in-app updater untestable).
 
 ## v0.15.1 — the permission prompt waits its turn (2026-07-19)
 

@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "── building app ──"
-(cd ui && ./build.sh)
+(cd ui && REWISP_NO_INSTALL=1 ./build.sh)
 
 # read the version AFTER the build — the pre-existing bundle may be stale
 VERSION=$(defaults read "$(pwd)/ui/Rewisp.app/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo "0.1.0")
